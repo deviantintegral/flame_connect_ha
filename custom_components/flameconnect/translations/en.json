@@ -2,14 +2,16 @@
   "config": {
     "step": {
       "user": {
+        "title": "FlameConnect Login",
+        "description": "Enter your FlameConnect account credentials. Your email and password are used once for authentication and are not stored.",
         "data": {
           "email": "Email",
           "password": "Password"
         }
       },
       "reauth_confirm": {
-        "title": "Reauthenticate Integration",
-        "description": "Your session has expired. Please sign in again.",
+        "title": "Re-authenticate FlameConnect",
+        "description": "Your session has expired. Please re-enter your credentials.",
         "data": {
           "email": "Email",
           "password": "Password"
@@ -22,73 +24,42 @@
       "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "This account is already configured."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Configure Integration Options",
-        "description": "Customize how this integration operates.",
-        "data": {
-          "update_interval_hours": "Update interval (hours)",
-          "enable_debugging": "Enable debug logging",
-          "custom_icon": "Custom icon (optional)"
-        },
-        "data_description": {
-          "update_interval_hours": "How often to refresh data from the API (0.25 to 24 hours)",
-          "enable_debugging": "Enable detailed debug logging for troubleshooting",
-          "custom_icon": "Override the default icon for entities (optional)"
-        }
-      }
-    }
-  },
-  "exceptions": {
-    "authentication_failed": {
-      "message": "Authentication failed during data update."
-    },
-    "update_failed": {
-      "message": "Failed to update data from the server."
-    },
-    "switch_turn_on_failed": {
-      "message": "Failed to turn on the switch."
-    },
-    "switch_turn_off_failed": {
-      "message": "Failed to turn off the switch."
-    },
-    "number_set_failed": {
-      "message": "Failed to set the target value."
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Re-authentication successful."
     }
   },
   "entity": {
-    "sensor": {
-      "air_quality_index": {
-        "name": "Air Quality Index"
-      },
-      "pm25": {
-        "name": "PM2.5"
-      },
-      "filter_life": {
-        "name": "Filter Life Remaining"
-      },
-      "runtime": {
-        "name": "Total Runtime"
-      }
-    },
-    "binary_sensor": {
-      "api_connectivity": {
-        "name": "API Connection"
-      },
-      "filter_replacement": {
-        "name": "Filter Replacement Needed"
-      }
-    },
     "switch": {
-      "child_lock": {
-        "name": "Child Lock"
+      "power": {
+        "name": "Power"
       },
-      "led_display": {
-        "name": "LED Display"
+      "flame_effect": {
+        "name": "Flame effect"
+      },
+      "pulsating_effect": {
+        "name": "Pulsating effect"
+      },
+      "ambient_sensor": {
+        "name": "Ambient sensor"
+      },
+      "timer": {
+        "name": "Timer"
+      }
+    },
+    "climate": {
+      "climate": {
+        "name": "Heat"
+      }
+    },
+    "light": {
+      "media_light": {
+        "name": "Media light"
+      },
+      "overhead_light": {
+        "name": "Overhead light"
+      },
+      "log_effect": {
+        "name": "Log effect"
       }
     },
     "select": {
@@ -140,47 +111,32 @@
         "name": "Sound file"
       }
     },
+    "sensor": {
+      "connection_state": {
+        "name": "Connection state"
+      },
+      "software_version": {
+        "name": "Software version"
+      },
+      "error_codes": {
+        "name": "Error codes"
+      }
+    },
     "button": {
-      "reset_filter": {
-        "name": "Reset Filter Timer"
-      }
-    },
-    "fan": {
-      "air_purifier": {
-        "name": "Air Purifier"
-      }
-    },
-    "light": {
-      "media_light": {
-        "name": "Media Light"
-      },
-      "overhead_light": {
-        "name": "Overhead Light"
-      },
-      "log_effect": {
-        "name": "Log Effect"
+      "refresh": {
+        "name": "Refresh data"
       }
     }
   },
   "issues": {
-    "deprecated_api_endpoint": {
-      "title": "Deprecated API Endpoint",
+    "auth_expired": {
+      "title": "FlameConnect authentication expired",
+      "description": "Your FlameConnect session has expired. Please re-authenticate to restore connectivity to your fireplaces.",
       "fix_flow": {
         "step": {
           "init": {
-            "title": "Update API Endpoint",
-            "description": "Your device is using API version {api_version} which is deprecated. Please update to v2 for continued support and new features.\n\nClick Submit to update your device to use the new API endpoint (v2). This will reload the integration."
-          }
-        }
-      }
-    },
-    "missing_configuration": {
-      "title": "Missing Configuration",
-      "fix_flow": {
-        "step": {
-          "init": {
-            "title": "Acknowledge Configuration Issue",
-            "description": "Some configuration options are missing or invalid. Please reconfigure the integration to ensure proper operation.\n\nClick Submit to acknowledge this issue. You may need to reconfigure the integration if problems persist."
+            "title": "Re-authenticate FlameConnect",
+            "description": "Click submit to start the re-authentication process."
           }
         }
       }
