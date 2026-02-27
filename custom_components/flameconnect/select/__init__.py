@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 def _enum_to_options(enum_type: type[FlameColor | Brightness | MediaTheme]) -> list[str]:
     """Convert an enum type to a list of human-readable option strings."""
-    return [member.name.lower().replace("_", " ") for member in enum_type]
+    return [member.name.lower() for member in enum_type]
 
 
 FLAME_COLOR_OPTIONS = _enum_to_options(FlameColor)
@@ -72,11 +72,11 @@ class FlameConnectSelectEntity(SelectEntity, FlameConnectEntity):
 
         key = self.entity_description.key
         if key == "flame_color":
-            return param.flame_color.name.lower().replace("_", " ")
+            return param.flame_color.name.lower()
         if key == "brightness":
-            return param.brightness.name.lower().replace("_", " ")
+            return param.brightness.name.lower()
         if key == "media_theme":
-            return param.media_theme.name.lower().replace("_", " ")
+            return param.media_theme.name.lower()
         return None
 
     async def async_select_option(self, option: str) -> None:
