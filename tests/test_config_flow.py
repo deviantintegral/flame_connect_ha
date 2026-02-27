@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from flameconnect import ApiError, AuthenticationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -42,7 +42,7 @@ def _make_credential_mocks():
     }
 
     mock_pca_class = MagicMock(return_value=mock_app)
-    mock_b2c_login = MagicMock(return_value="https://redirect.example.com?code=fake-code&state=fake-state")
+    mock_b2c_login = AsyncMock(return_value="https://redirect.example.com?code=fake-code&state=fake-state")
     mock_cache_class = MagicMock(return_value=mock_cache)
 
     return mock_pca_class, mock_b2c_login, mock_cache_class
