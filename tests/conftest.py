@@ -4,7 +4,35 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from flameconnect import ConnectionState, Fire, FireOverview
+from flameconnect import (
+    Brightness,
+    ConnectionState,
+    ErrorParam,
+    Fire,
+    FireMode,
+    FireOverview,
+    FlameColor,
+    FlameEffect,
+    FlameEffectParam,
+    HeatControl,
+    HeatMode,
+    HeatModeParam,
+    HeatParam,
+    HeatStatus,
+    LightStatus,
+    LogEffect,
+    LogEffectParam,
+    MediaTheme,
+    ModeParam,
+    PulsatingEffect,
+    RGBWColor,
+    SoftwareVersionParam,
+    SoundParam,
+    TempUnit,
+    TempUnitParam,
+    TimerParam,
+    TimerStatus,
+)
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -35,7 +63,53 @@ def mock_fire() -> Fire:
 
 @pytest.fixture
 def mock_fire_overview(mock_fire: Fire) -> FireOverview:
-    return FireOverview(fire=mock_fire, parameters=[])
+    return FireOverview(
+        fire=mock_fire,
+        parameters=[
+            ModeParam(mode=FireMode.MANUAL, target_temperature=21.0),
+            FlameEffectParam(
+                flame_effect=FlameEffect.ON,
+                flame_speed=3,
+                brightness=Brightness.HIGH,
+                pulsating_effect=PulsatingEffect.OFF,
+                media_theme=MediaTheme.WHITE,
+                media_light=LightStatus.ON,
+                media_color=RGBWColor(255, 0, 0, 128),
+                overhead_light=LightStatus.OFF,
+                overhead_color=RGBWColor(255, 255, 255, 255),
+                light_status=LightStatus.ON,
+                flame_color=FlameColor.YELLOW,
+                ambient_sensor=LightStatus.OFF,
+            ),
+            HeatParam(
+                heat_status=HeatStatus.ON,
+                heat_mode=HeatMode.NORMAL,
+                setpoint_temperature=22.0,
+                boost_duration=30,
+            ),
+            HeatModeParam(heat_control=HeatControl.ENABLED),
+            TimerParam(timer_status=TimerStatus.DISABLED, duration=60),
+            TempUnitParam(unit=TempUnit.CELSIUS),
+            SoftwareVersionParam(
+                ui_major=1,
+                ui_minor=2,
+                ui_test=3,
+                control_major=4,
+                control_minor=5,
+                control_test=6,
+                relay_major=7,
+                relay_minor=8,
+                relay_test=9,
+            ),
+            ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0),
+            SoundParam(volume=50, sound_file=1),
+            LogEffectParam(
+                log_effect=LogEffect.OFF,
+                color=RGBWColor(0, 255, 0, 0),
+                pattern=0,
+            ),
+        ],
+    )
 
 
 @pytest.fixture
