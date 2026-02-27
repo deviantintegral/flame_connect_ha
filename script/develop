@@ -4,7 +4,7 @@
 #
 # Starts Home Assistant with debug logging enabled, using the config/ directory
 # for configuration. Automatically cleans up accidental package installations and
-# sets PYTHONPATH to load the integration from custom_components/.
+# symlinks the integration into config/custom_components/ for HA discovery.
 #
 # Usage:
 #   ./script/develop
@@ -55,11 +55,18 @@ fi
 
 "$SCRIPT_DIR/setup/sync-hacs"
 
-# Set the path to custom_components
-## This let's us have the structure we want <root>/custom_components/flameconnect
-## while at the same time have Home Assistant configuration inside <root>/config
-## without resulting to symlinks.
-export PYTHONPATH="${PYTHONPATH:-}:${PWD}/custom_components"
+# Symlink our integration into the config directory so HA discovers it.
+# We cannot use PYTHONPATH to add custom_components/ to sys.path because the
+# integration domain "flameconnect" matches the PyPI library name, which causes
+# a circular import (Python finds our __init__.py instead of the library).
+log_header "Linking integration into config"
+mkdir -p "${PWD}/config/custom_components"
+if [[ ! -e "${PWD}/config/custom_components/flameconnect" ]]; then
+    ln -sf "${PWD}/custom_components/flameconnect" "${PWD}/config/custom_components/flameconnect"
+    log_info "Symlinked flameconnect integration"
+else
+    log_info "Integration link already exists"
+fi
 
 log_header "Starting Home Assistant in development mode"
 log_info "Config directory: ${PWD}/config"
