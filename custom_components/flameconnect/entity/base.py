@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from custom_components.flameconnect.const import ATTRIBUTION
 from custom_components.flameconnect.coordinator import FlameConnectDataUpdateCoordinator
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -37,7 +36,6 @@ class FlameConnectEntity(CoordinatorEntity[FlameConnectDataUpdateCoordinator]):
     https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
     """
 
-    _attr_attribution = ATTRIBUTION
     _attr_has_entity_name = True
 
     def __init__(

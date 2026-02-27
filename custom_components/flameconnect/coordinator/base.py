@@ -13,9 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from custom_components.flameconnect.api import FlameConnectApiClientAuthenticationError, FlameConnectApiClientError
 from custom_components.flameconnect.const import LOGGER
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 if TYPE_CHECKING:
@@ -96,26 +94,10 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator):
             ConfigEntryAuthFailed: If authentication fails, triggers reauthentication.
             UpdateFailed: If data fetching fails for other reasons, optionally with retry_after.
         """
+        # TODO: API client integration will be implemented in Task 04
         try:
-            # Optional: Get active entity contexts to optimize data fetching
-            # listening_contexts = set(self.async_contexts())
-            # LOGGER.debug("Active entity contexts: %s", listening_contexts)
-
-            # Fetch data from API
-            # In production, you could pass listening_contexts to optimize the API call:
-            # return await self.config_entry.runtime_data.client.async_get_data(listening_contexts)
             return await self.config_entry.runtime_data.client.async_get_data()
-        except FlameConnectApiClientAuthenticationError as exception:
-            LOGGER.warning("Authentication error - %s", exception)
-            raise ConfigEntryAuthFailed(
-                translation_domain="flameconnect",
-                translation_key="authentication_failed",
-            ) from exception
-        except FlameConnectApiClientError as exception:
-            LOGGER.exception("Error communicating with API")
-            # If the API provides rate limit information, you can honor it:
-            # if hasattr(exception, 'retry_after'):
-            #     raise UpdateFailed(retry_after=exception.retry_after) from exception
+        except Exception as exception:
             raise UpdateFailed(
                 translation_domain="flameconnect",
                 translation_key="update_failed",

@@ -1,16 +1,23 @@
 """Constants for flameconnect."""
 
+from __future__ import annotations
+
 from logging import Logger, getLogger
+
+from homeassistant.const import Platform
 
 LOGGER: Logger = getLogger(__package__)
 
 # Integration metadata
 DOMAIN = "flameconnect"
-ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
 
-# Platform parallel updates - applied to all platforms
-PARALLEL_UPDATES = 1
-
-# Default configuration values
-DEFAULT_UPDATE_INTERVAL_HOURS = 1
-DEFAULT_ENABLE_DEBUGGING = False
+# Platforms supported by this integration
+PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
+    Platform.CLIMATE,
+    Platform.LIGHT,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]

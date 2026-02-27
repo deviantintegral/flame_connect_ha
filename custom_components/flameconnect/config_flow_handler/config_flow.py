@@ -12,7 +12,7 @@ https://developers.home-assistant.io/docs/config_entries_config_flow_handler
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from slugify import slugify
 
@@ -25,9 +25,6 @@ from custom_components.flameconnect.config_flow_handler.validators import valida
 from custom_components.flameconnect.const import DOMAIN, LOGGER
 from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
-
-if TYPE_CHECKING:
-    from custom_components.flameconnect.config_flow_handler.options_flow import FlameConnectOptionsFlow
 
 # Map exception types to error keys for user-facing messages
 ERROR_MAP = {
@@ -53,23 +50,6 @@ class FlameConnectConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """
 
     VERSION = 1
-
-    @staticmethod
-    def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
-    ) -> FlameConnectOptionsFlow:
-        """
-        Get the options flow for this handler.
-
-        Returns:
-            The options flow instance for modifying integration options.
-
-        """
-        from custom_components.flameconnect.config_flow_handler.options_flow import (  # noqa: PLC0415
-            FlameConnectOptionsFlow,
-        )
-
-        return FlameConnectOptionsFlow()
 
     async def async_step_user(
         self,

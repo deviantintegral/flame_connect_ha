@@ -17,8 +17,10 @@ from typing import Any
 
 import voluptuous as vol
 
-from custom_components.flameconnect.const import DEFAULT_ENABLE_DEBUGGING, DEFAULT_UPDATE_INTERVAL_HOURS
 from homeassistant.helpers import selector
+
+DEFAULT_UPDATE_INTERVAL_HOURS = 1
+DEFAULT_ENABLE_DEBUGGING = False
 
 
 def get_options_schema(defaults: Mapping[str, Any] | None = None) -> vol.Schema:

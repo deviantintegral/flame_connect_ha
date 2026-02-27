@@ -35,7 +35,6 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
     coordinator = entry.runtime_data.coordinator
     client = entry.runtime_data.client
-    integration = entry.runtime_data.integration
 
     # Get device and entity information
     device_reg = dr.async_get(hass)
@@ -76,17 +75,7 @@ async def async_get_config_entry_diagnostics(
 
     # API client information (no sensitive data)
     api_info = {
-        "base_endpoint": "https://jsonplaceholder.typicode.com",
-        "has_credentials": bool(client._username),  # noqa: SLF001
-    }
-
-    # Integration information
-    integration_info = {
-        "name": integration.name,
-        "version": integration.version,
-        "domain": integration.domain,
-        "documentation": integration.documentation,
-        "issue_tracker": integration.issue_tracker,
+        "has_client": client is not None,
     }
 
     # Config entry details (with redacted sensitive data)
@@ -122,7 +111,6 @@ async def async_get_config_entry_diagnostics(
 
     return {
         "entry": entry_info,
-        "integration": integration_info,
         "coordinator": coordinator_info,
         "api": api_info,
         "devices": device_info,

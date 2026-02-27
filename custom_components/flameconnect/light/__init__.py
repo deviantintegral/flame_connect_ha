@@ -1,0 +1,1 @@
+"""FlameConnect light platform."""
