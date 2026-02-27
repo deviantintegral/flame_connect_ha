@@ -67,12 +67,12 @@
         "name": "Flame color",
         "state": {
           "all": "All",
-          "yellow red": "Yellow red",
-          "yellow blue": "Yellow blue",
+          "yellow_red": "Yellow red",
+          "yellow_blue": "Yellow blue",
           "blue": "Blue",
           "red": "Red",
           "yellow": "Yellow",
-          "blue red": "Blue red"
+          "blue_red": "Blue red"
         }
       },
       "brightness": {
@@ -85,7 +85,7 @@
       "media_theme": {
         "name": "Media theme",
         "state": {
-          "user defined": "User defined",
+          "user_defined": "User defined",
           "white": "White",
           "blue": "Blue",
           "purple": "Purple",
@@ -131,7 +131,6 @@
   "issues": {
     "auth_expired": {
       "title": "FlameConnect authentication expired",
-      "description": "Your FlameConnect session has expired. Please re-authenticate to restore connectivity to your fireplaces.",
       "fix_flow": {
         "step": {
           "init": {
