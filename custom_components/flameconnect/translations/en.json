@@ -92,19 +92,52 @@
       }
     },
     "select": {
-      "fan_speed": {
-        "name": "Fan Speed",
+      "flame_color": {
+        "name": "Flame color",
         "state": {
-          "low": "Low",
-          "medium": "Medium",
+          "all": "All",
+          "yellow red": "Yellow red",
+          "yellow blue": "Yellow blue",
+          "blue": "Blue",
+          "red": "Red",
+          "yellow": "Yellow",
+          "blue red": "Blue red"
+        }
+      },
+      "brightness": {
+        "name": "Brightness",
+        "state": {
           "high": "High",
-          "auto": "Auto"
+          "low": "Low"
+        }
+      },
+      "media_theme": {
+        "name": "Media theme",
+        "state": {
+          "user defined": "User defined",
+          "white": "White",
+          "blue": "Blue",
+          "purple": "Purple",
+          "red": "Red",
+          "green": "Green",
+          "prism": "Prism",
+          "kaleidoscope": "Kaleidoscope",
+          "midnight": "Midnight"
         }
       }
     },
     "number": {
-      "target_humidity": {
-        "name": "Target Humidity"
+      "flame_speed": {
+        "name": "Flame speed"
+      },
+      "timer_duration": {
+        "name": "Timer duration"
+      },
+      "sound_volume": {
+        "name": "Sound volume"
+      },
+      "sound_file": {
+        "name": "Sound file"
       }
     },
     "button": {
@@ -115,6 +148,17 @@
     "fan": {
       "air_purifier": {
         "name": "Air Purifier"
+      }
+    },
+    "light": {
+      "media_light": {
+        "name": "Media Light"
+      },
+      "overhead_light": {
+        "name": "Overhead Light"
+      },
+      "log_effect": {
+        "name": "Log Effect"
       }
     }
   },

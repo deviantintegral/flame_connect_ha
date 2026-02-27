@@ -1,1 +1,101 @@
-"""Select platform for flameconnect."""
+"""Select platform for FlameConnect."""
+
+from __future__ import annotations
+
+import dataclasses
+from typing import TYPE_CHECKING
+
+from custom_components.flameconnect.entity import FlameConnectEntity
+from flameconnect import Brightness, FlameColor, FlameEffectParam, MediaTheme
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
+
+if TYPE_CHECKING:
+    from custom_components.flameconnect.data import FlameConnectConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+
+def _enum_to_options(enum_type: type[FlameColor | Brightness | MediaTheme]) -> list[str]:
+    """Convert an enum type to a list of human-readable option strings."""
+    return [member.name.lower().replace("_", " ") for member in enum_type]
+
+
+FLAME_COLOR_OPTIONS = _enum_to_options(FlameColor)
+BRIGHTNESS_OPTIONS = _enum_to_options(Brightness)
+MEDIA_THEME_OPTIONS = _enum_to_options(MediaTheme)
+
+
+SELECT_DESCRIPTIONS: tuple[SelectEntityDescription, ...] = (
+    SelectEntityDescription(
+        key="flame_color",
+        translation_key="flame_color",
+        options=FLAME_COLOR_OPTIONS,
+    ),
+    SelectEntityDescription(
+        key="brightness",
+        translation_key="brightness",
+        options=BRIGHTNESS_OPTIONS,
+    ),
+    SelectEntityDescription(
+        key="media_theme",
+        translation_key="media_theme",
+        options=MEDIA_THEME_OPTIONS,
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: FlameConnectConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up FlameConnect select entities."""
+    coordinator = entry.runtime_data.coordinator
+    async_add_entities(
+        FlameConnectSelectEntity(coordinator, description, fire)
+        for description in SELECT_DESCRIPTIONS
+        for fire in coordinator.fires
+    )
+
+
+class FlameConnectSelectEntity(SelectEntity, FlameConnectEntity):
+    """Select entity for FlameConnect fireplace settings."""
+
+    entity_description: SelectEntityDescription
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the currently selected option."""
+        param = self._get_param(FlameEffectParam)
+        if param is None:
+            return None
+
+        key = self.entity_description.key
+        if key == "flame_color":
+            return param.flame_color.name.lower().replace("_", " ")
+        if key == "brightness":
+            return param.brightness.name.lower().replace("_", " ")
+        if key == "media_theme":
+            return param.media_theme.name.lower().replace("_", " ")
+        return None
+
+    async def async_select_option(self, option: str) -> None:
+        """Change the selected option."""
+        client = self.coordinator.config_entry.runtime_data.client
+        overview = await client.get_fire_overview(self._fire_id)
+        param = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
+
+        key = self.entity_description.key
+        enum_value = option.upper().replace(" ", "_")
+
+        if key == "flame_color":
+            new_param = dataclasses.replace(param, flame_color=FlameColor[enum_value])
+        elif key == "brightness":
+            new_param = dataclasses.replace(param, brightness=Brightness[enum_value])
+        elif key == "media_theme":
+            new_param = dataclasses.replace(param, media_theme=MediaTheme[enum_value])
+        else:
+            return
+
+        await client.write_parameters(self._fire_id, [new_param])
+        await self.coordinator.async_request_refresh()
