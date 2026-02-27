@@ -199,12 +199,23 @@ class FlameConnectTimerSwitch(FlameConnectSwitchBase):
         return param.timer_status == TimerStatus.ENABLED
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Enable the timer, preserving the current duration."""
-        await self.coordinator.async_write_fields(self._fire_id, TimerParam, timer_status=TimerStatus.ENABLED)
+        """Enable the timer with a valid duration.
+
+        The API requires both status and duration in every write.  Use
+        the current HA-known duration, falling back to 60 minutes
+        (matching the library TUI default) if the value is zero.
+        """
+        current = self._get_param(TimerParam)
+        duration = current.duration if current and current.duration > 0 else 60
+        await self.coordinator.async_write_fields(
+            self._fire_id, TimerParam, timer_status=TimerStatus.ENABLED, duration=duration
+        )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Disable the timer, preserving the current duration."""
-        await self.coordinator.async_write_fields(self._fire_id, TimerParam, timer_status=TimerStatus.DISABLED)
+        """Disable the timer, zeroing the duration (matches TUI behaviour)."""
+        await self.coordinator.async_write_fields(
+            self._fire_id, TimerParam, timer_status=TimerStatus.DISABLED, duration=0
+        )
 
 
 # Populate the class registry after all classes are defined.

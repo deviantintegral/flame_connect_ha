@@ -131,9 +131,10 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
             cancel = self._debounce_timers.pop(key, None)
             if cancel is not None:
                 cancel()
-            # Pending changes first; explicit changes take priority.
-            pending.update(changes)
-            changes = pending
+            # Explicit changes are the base; pending user input wins on conflict.
+            merged = dict(changes)
+            merged.update(pending)
+            changes = merged
 
         async with self._write_locks[fire_id]:
             overview = await self.client.get_fire_overview(fire_id)
