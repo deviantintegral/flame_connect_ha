@@ -9,6 +9,7 @@ from flameconnect import (
     ConnectionState,
     ErrorParam,
     Fire,
+    FireFeatures,
     FireMode,
     FireOverview,
     FlameColor,
@@ -58,6 +59,22 @@ def mock_fire() -> Fire:
         connection_state=ConnectionState.CONNECTED,
         with_heat=True,
         is_iot_fire=True,
+        features=FireFeatures(
+            sound=True,
+            simple_heat=True,
+            advanced_heat=True,
+            count_down_timer=True,
+            moods=True,
+            rgb_flame_accent=True,
+            flame_dimming=True,
+            rgb_fuel_bed=True,
+            flame_fan_speed=True,
+            rgb_back_light=True,
+            pir_toggle_smart_sense=True,
+            rgb_log_effect=True,
+            power_boost=True,
+            fan_only=True,
+        ),
     )
 
 
