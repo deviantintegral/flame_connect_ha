@@ -59,6 +59,17 @@ SWITCH_DESCRIPTIONS: tuple[SwitchEntityDescription, ...] = (
 _SWITCH_CLASSES: dict[str, type[FlameConnectSwitchBase]] = {}
 """Registry populated after all classes are defined."""
 
+_FEATURE_REQUIREMENTS: dict[str, str] = {
+    "ambient_sensor": "pir_toggle_smart_sense",
+    "timer": "count_down_timer",
+}
+"""Map of switch keys to required ``FireFeatures`` attribute names.
+
+Switches whose key appears here are only created when the corresponding
+feature flag on the ``Fire`` object is ``True``.  Switches not listed
+are always created.
+"""
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -71,6 +82,9 @@ async def async_setup_entry(
     entities: list[SwitchEntity] = []
     for fire in coordinator.fires:
         for description in SWITCH_DESCRIPTIONS:
+            feature_attr = _FEATURE_REQUIREMENTS.get(description.key)
+            if feature_attr is not None and not getattr(fire.features, feature_attr):
+                continue
             cls = _SWITCH_CLASSES[description.key]
             entities.append(cls(coordinator, description, fire))
     async_add_entities(entities)

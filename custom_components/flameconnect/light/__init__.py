@@ -59,9 +59,12 @@ async def async_setup_entry(
     coordinator = entry.runtime_data.coordinator
     entities: list[LightEntity] = []
     for fire in coordinator.fires:
-        entities.append(FlameConnectMediaLight(coordinator, _MEDIA_LIGHT_DESCRIPTION, fire))
-        entities.append(FlameConnectOverheadLight(coordinator, _OVERHEAD_LIGHT_DESCRIPTION, fire))
-        entities.append(FlameConnectLogEffectLight(coordinator, _LOG_EFFECT_DESCRIPTION, fire))
+        if fire.features.rgb_fuel_bed:
+            entities.append(FlameConnectMediaLight(coordinator, _MEDIA_LIGHT_DESCRIPTION, fire))
+        if fire.features.rgb_back_light:
+            entities.append(FlameConnectOverheadLight(coordinator, _OVERHEAD_LIGHT_DESCRIPTION, fire))
+        if fire.features.rgb_log_effect:
+            entities.append(FlameConnectLogEffectLight(coordinator, _LOG_EFFECT_DESCRIPTION, fire))
     async_add_entities(entities)
 
 

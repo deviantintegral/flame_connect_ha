@@ -63,9 +63,10 @@ async def async_setup_entry(
                 FlameConnectConnectionStateSensor(coordinator, SENSOR_DESCRIPTIONS[0], fire),
                 FlameConnectSoftwareVersionSensor(coordinator, SENSOR_DESCRIPTIONS[1], fire),
                 FlameConnectErrorCodesSensor(coordinator, SENSOR_DESCRIPTIONS[2], fire),
-                FlameConnectTimerEndSensor(coordinator, TIMER_END_DESCRIPTION, fire),
             ]
         )
+        if fire.features.count_down_timer:
+            entities.append(FlameConnectTimerEndSensor(coordinator, TIMER_END_DESCRIPTION, fire))
 
     async_add_entities(entities)
 

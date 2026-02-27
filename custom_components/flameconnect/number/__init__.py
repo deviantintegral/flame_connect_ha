@@ -16,6 +16,13 @@ if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 
+_FEATURE_REQUIREMENTS: dict[str, str] = {
+    "flame_speed": "flame_fan_speed",
+    "timer_duration": "count_down_timer",
+    "sound_volume": "sound",
+    "sound_file": "sound",
+}
+
 NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
     NumberEntityDescription(
         key="flame_speed",
@@ -64,6 +71,7 @@ async def async_setup_entry(
         FlameConnectNumberEntity(coordinator, description, fire)
         for description in NUMBER_DESCRIPTIONS
         for fire in coordinator.fires
+        if getattr(fire.features, _FEATURE_REQUIREMENTS[description.key], False)
     )
 
 

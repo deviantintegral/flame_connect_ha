@@ -25,6 +25,12 @@ BRIGHTNESS_OPTIONS = _enum_to_options(Brightness)
 MEDIA_THEME_OPTIONS = _enum_to_options(MediaTheme)
 
 
+_FEATURE_REQUIREMENTS: dict[str, str] = {
+    "flame_color": "rgb_flame_accent",
+    "brightness": "flame_dimming",
+    "media_theme": "moods",
+}
+
 SELECT_DESCRIPTIONS: tuple[SelectEntityDescription, ...] = (
     SelectEntityDescription(
         key="flame_color",
@@ -55,6 +61,7 @@ async def async_setup_entry(
         FlameConnectSelectEntity(coordinator, description, fire)
         for description in SELECT_DESCRIPTIONS
         for fire in coordinator.fires
+        if getattr(fire.features, _FEATURE_REQUIREMENTS[description.key], False)
     )
 
 

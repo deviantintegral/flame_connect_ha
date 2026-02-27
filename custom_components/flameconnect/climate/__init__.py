@@ -18,8 +18,11 @@ from homeassistant.components.climate.const import ClimateEntityFeature, HVACMod
 from homeassistant.const import UnitOfTemperature
 
 if TYPE_CHECKING:
+    from custom_components.flameconnect.coordinator import FlameConnectDataUpdateCoordinator
     from custom_components.flameconnect.data import FlameConnectConfigEntry
+    from flameconnect import Fire
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity import EntityDescription
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 CLIMATE_DESCRIPTION = ClimateEntityDescription(
@@ -35,21 +38,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up FlameConnect climate entities."""
     coordinator = entry.runtime_data.coordinator
-    entities: list[FlameConnectClimate] = []
-    for fire in coordinator.fires:
-        overview = coordinator.data.get(fire.fire_id)
-        has_heat_params = overview is not None and any(
-            isinstance(p, (HeatParam, HeatModeParam)) for p in overview.parameters
-        )
-        LOGGER.debug(
-            "Fire %s (%s): with_heat=%s, has_heat_params=%s",
-            fire.friendly_name,
-            fire.fire_id,
-            fire.with_heat,
-            has_heat_params,
-        )
-        if has_heat_params:
-            entities.append(FlameConnectClimate(coordinator, CLIMATE_DESCRIPTION, fire))
+    entities = [
+        FlameConnectClimate(coordinator, CLIMATE_DESCRIPTION, fire)
+        for fire in coordinator.fires
+        if fire.features.simple_heat or fire.features.advanced_heat
+    ]
     LOGGER.debug(
         "Climate setup: %d fires discovered, %d with heat capability",
         len(coordinator.fires),
@@ -64,9 +57,23 @@ class FlameConnectClimate(FlameConnectEntity, ClimateEntity):
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
-    _attr_preset_modes = ["normal", "boost", "eco", "fan_only", "schedule"]
 
     entity_description: ClimateEntityDescription
+
+    def __init__(
+        self,
+        coordinator: FlameConnectDataUpdateCoordinator,
+        description: EntityDescription,
+        fire: Fire,
+    ) -> None:
+        """Initialise climate entity with dynamic preset modes based on features."""
+        super().__init__(coordinator, description, fire)
+        presets = ["normal", "eco", "schedule"]
+        if fire.features.power_boost:
+            presets.append("boost")
+        if fire.features.fan_only:
+            presets.append("fan_only")
+        self._attr_preset_modes = presets
 
     @property
     def available(self) -> bool:
