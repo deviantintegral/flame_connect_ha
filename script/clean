@@ -57,10 +57,20 @@ fi
 
 # Uninstall if accidentally installed (always, even in minimal mode)
 # Find all non-symlink directories in custom_components/
+# Skip packages that are listed in manifest.json requirements (legitimate dependencies)
 if [[ -d custom_components ]]; then
     while IFS= read -r -d '' dir; do
         if [[ -d "$dir" && ! -L "${dir%/}" ]]; then
             PACKAGE_NAME=$(basename "$dir")
+            # Skip if this package is a legitimate dependency listed in manifest.json
+            MANIFEST="$dir/manifest.json"
+            if [[ -f "$MANIFEST" ]] && python -c "
+import json, sys
+reqs = json.load(open('$MANIFEST')).get('requirements', [])
+sys.exit(0 if any(r.split('==')[0].split('>=')[0].split('<')[0].strip() == '$PACKAGE_NAME' for r in reqs) else 1)
+" 2>/dev/null; then
+                continue
+            fi
             if pip show "$PACKAGE_NAME" >/dev/null 2>&1; then
                 if [[ $MINIMAL_MODE == false ]]; then
                     log_step "Uninstalling accidentally installed package: $PACKAGE_NAME"
