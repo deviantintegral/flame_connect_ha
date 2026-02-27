@@ -1,7 +1,7 @@
 """Switch platform for FlameConnect.
 
 Provides five switches for fireplace control:
-- Power (on/off via dedicated client methods)
+- Power (on/off via dedicated coordinator methods)
 - Flame effect (enable/disable flame effect)
 - Pulsating effect (enable/disable pulsating effect)
 - Ambient sensor (enable/disable ambient light sensor)
@@ -10,7 +10,6 @@ Provides five switches for fireplace control:
 
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING, Any
 
 from custom_components.flameconnect.entity import FlameConnectEntity
@@ -121,15 +120,11 @@ class FlameConnectPowerSwitch(FlameConnectSwitchBase):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the fireplace on."""
-        client = self.coordinator.config_entry.runtime_data.client
-        await client.turn_on(self._fire_id)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_turn_on_fire(self._fire_id)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the fireplace off."""
-        client = self.coordinator.config_entry.runtime_data.client
-        await client.turn_off(self._fire_id)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_turn_off_fire(self._fire_id)
 
 
 class FlameConnectFlameEffectSwitch(FlameConnectSwitchBase):
@@ -145,20 +140,11 @@ class FlameConnectFlameEffectSwitch(FlameConnectSwitchBase):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Enable the flame effect."""
-        await self._set_flame_effect(FlameEffect.ON)
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, flame_effect=FlameEffect.ON)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Disable the flame effect."""
-        await self._set_flame_effect(FlameEffect.OFF)
-
-    async def _set_flame_effect(self, value: FlameEffect) -> None:
-        """Write the flame effect parameter using read-before-write."""
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
-        new_param = dataclasses.replace(param, flame_effect=value)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, flame_effect=FlameEffect.OFF)
 
 
 class FlameConnectPulsatingEffectSwitch(FlameConnectSwitchBase):
@@ -174,20 +160,11 @@ class FlameConnectPulsatingEffectSwitch(FlameConnectSwitchBase):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Enable the pulsating effect."""
-        await self._set_pulsating_effect(PulsatingEffect.ON)
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, pulsating_effect=PulsatingEffect.ON)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Disable the pulsating effect."""
-        await self._set_pulsating_effect(PulsatingEffect.OFF)
-
-    async def _set_pulsating_effect(self, value: PulsatingEffect) -> None:
-        """Write the pulsating effect parameter using read-before-write."""
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
-        new_param = dataclasses.replace(param, pulsating_effect=value)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, pulsating_effect=PulsatingEffect.OFF)
 
 
 class FlameConnectAmbientSensorSwitch(FlameConnectSwitchBase):
@@ -203,20 +180,11 @@ class FlameConnectAmbientSensorSwitch(FlameConnectSwitchBase):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Enable the ambient sensor."""
-        await self._set_ambient_sensor(LightStatus.ON)
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, ambient_sensor=LightStatus.ON)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Disable the ambient sensor."""
-        await self._set_ambient_sensor(LightStatus.OFF)
-
-    async def _set_ambient_sensor(self, value: LightStatus) -> None:
-        """Write the ambient sensor parameter using read-before-write."""
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
-        new_param = dataclasses.replace(param, ambient_sensor=value)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, ambient_sensor=LightStatus.OFF)
 
 
 class FlameConnectTimerSwitch(FlameConnectSwitchBase):
@@ -232,20 +200,11 @@ class FlameConnectTimerSwitch(FlameConnectSwitchBase):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Enable the timer, preserving the current duration."""
-        await self._set_timer(TimerStatus.ENABLED)
+        await self.coordinator.async_write_fields(self._fire_id, TimerParam, timer_status=TimerStatus.ENABLED)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Disable the timer, preserving the current duration."""
-        await self._set_timer(TimerStatus.DISABLED)
-
-    async def _set_timer(self, status: TimerStatus) -> None:
-        """Write the timer parameter, preserving the current duration."""
-        client = self.coordinator.config_entry.runtime_data.client
-        current = self._get_param(TimerParam)
-        duration = current.duration if current else 60
-        new_param = TimerParam(timer_status=status, duration=duration)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, TimerParam, timer_status=TimerStatus.DISABLED)
 
 
 # Populate the class registry after all classes are defined.

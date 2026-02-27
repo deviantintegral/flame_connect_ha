@@ -3,29 +3,43 @@
 Fetches fire discovery data once at setup, then polls per-fire overview
 data on a 24-hour interval with random jitter to avoid thundering-herd
 effects across multiple installations.
+
+All entity writes are routed through this coordinator to prevent races
+(per-fire ``asyncio.Lock``) and to debounce rapid slider changes.
 """
 
 from __future__ import annotations
 
+import asyncio
+from collections import defaultdict
+from collections.abc import Callable
 import dataclasses
-from datetime import timedelta
+from datetime import datetime, timedelta
+from functools import partial
 from random import randint
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from custom_components.flameconnect.const import DOMAIN, LOGGER
 from flameconnect import ApiError, AuthenticationError, FireOverview, FlameConnectClient, FlameConnectError
+from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 if TYPE_CHECKING:
     from custom_components.flameconnect.data import FlameConnectConfigEntry
-    from flameconnect import Fire
+    from flameconnect import Fire, Parameter
     from homeassistant.core import HomeAssistant
 
 
 class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOverview]]):
     """Coordinator that polls FlameConnect cloud for fireplace data.
+
+    All parameter writes go through ``async_write_fields`` (immediate) or
+    ``async_write_fields_debounced`` (coalesced).  A per-fire
+    ``asyncio.Lock`` serialises read-modify-write cycles so concurrent
+    writes to the same parameter type never race.
 
     Attributes:
         config_entry: The config entry for this integration instance.
@@ -51,6 +65,10 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
             update_interval=timedelta(hours=24) + jitter,
         )
         self.client = client
+
+        self._write_locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self._pending_writes: dict[tuple[str, type[Parameter]], dict[str, Any]] = {}
+        self._debounce_timers: dict[tuple[str, type[Parameter]], Callable[[], None]] = {}
 
     async def _async_setup(self) -> None:
         """Discover all fires during first refresh."""
@@ -87,3 +105,103 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
             raise UpdateFailed(str(err)) from err
         else:
             return result
+
+    # ------------------------------------------------------------------
+    # Centralised write helpers
+    # ------------------------------------------------------------------
+
+    async def async_write_fields(
+        self,
+        fire_id: str,
+        param_type: type[Parameter],
+        **changes: Any,
+    ) -> None:
+        """Read-modify-write a parameter under the per-fire lock.
+
+        Acquires the lock for *fire_id*, fetches a fresh overview from
+        the API, applies *changes* via ``dataclasses.replace``, writes
+        back, then triggers a coordinator refresh.
+        """
+        async with self._write_locks[fire_id]:
+            overview = await self.client.get_fire_overview(fire_id)
+            param = next(p for p in overview.parameters if isinstance(p, param_type))
+            new_param = dataclasses.replace(param, **changes)
+            await self.client.write_parameters(fire_id, [new_param])
+        await self.async_request_refresh()
+
+    async def async_write_fields_debounced(
+        self,
+        fire_id: str,
+        param_type: type[Parameter],
+        delay: float = 1.0,
+        **changes: Any,
+    ) -> None:
+        """Accumulate field changes and flush after *delay* seconds.
+
+        Repeated calls within the delay window merge their changes so
+        only a single API write is performed with the final values
+        (e.g. rapid slider increments).
+        """
+        key = (fire_id, param_type)
+        pending = self._pending_writes.get(key)
+        if pending is not None:
+            pending.update(changes)
+        else:
+            self._pending_writes[key] = dict(changes)
+
+        cancel = self._debounce_timers.get(key)
+        if cancel is not None:
+            cancel()
+
+        self._debounce_timers[key] = async_call_later(
+            self.hass,
+            delay,
+            partial(self._flush_debounced_write, fire_id, param_type),
+        )
+
+    @callback
+    def _flush_debounced_write(
+        self,
+        fire_id: str,
+        param_type: type[Parameter],
+        _now: datetime,
+    ) -> None:
+        """Pop pending changes and create an ``async_write_fields`` task."""
+        key = (fire_id, param_type)
+        changes = self._pending_writes.pop(key, None)
+        self._debounce_timers.pop(key, None)
+        if changes:
+            self.hass.async_create_task(self.async_write_fields(fire_id, param_type, **changes))
+
+    async def async_flush_pending_writes(self, fire_id: str) -> None:
+        """Immediately flush all pending debounced writes for a fire."""
+        keys = [k for k in self._pending_writes if k[0] == fire_id]
+        for key in keys:
+            cancel = self._debounce_timers.pop(key, None)
+            if cancel is not None:
+                cancel()
+            changes = self._pending_writes.pop(key, None)
+            if changes:
+                await self.async_write_fields(key[0], key[1], **changes)
+
+    async def async_turn_on_fire(self, fire_id: str) -> None:
+        """Flush pending writes, then turn the fire on under lock."""
+        await self.async_flush_pending_writes(fire_id)
+        async with self._write_locks[fire_id]:
+            await self.client.turn_on(fire_id)
+        await self.async_request_refresh()
+
+    async def async_turn_off_fire(self, fire_id: str) -> None:
+        """Flush pending writes, then turn the fire off under lock."""
+        await self.async_flush_pending_writes(fire_id)
+        async with self._write_locks[fire_id]:
+            await self.client.turn_off(fire_id)
+        await self.async_request_refresh()
+
+    async def async_shutdown(self) -> None:
+        """Cancel all debounce timers and shut down."""
+        for cancel in self._debounce_timers.values():
+            cancel()
+        self._debounce_timers.clear()
+        self._pending_writes.clear()
+        await super().async_shutdown()

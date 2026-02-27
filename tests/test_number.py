@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
 from flameconnect import FlameEffectParam
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from homeassistant.core import HomeAssistant
+from homeassistant.util.dt import utcnow
 
 
 async def _setup_integration(
@@ -69,6 +71,10 @@ async def test_set_flame_speed_writes(
         {"entity_id": "number.living_room_flame_speed", "value": 5},
         blocking=True,
     )
+
+    # Advance time past the debounce delay so the write flushes.
+    async_fire_time_changed(hass, utcnow() + timedelta(seconds=2))
+    await hass.async_block_till_done()
 
     mock_flameconnect_client.get_fire_overview.assert_called()
     mock_flameconnect_client.write_parameters.assert_called_once()

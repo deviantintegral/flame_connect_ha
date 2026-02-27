@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING
 
 from custom_components.flameconnect.entity import FlameConnectEntity
@@ -91,21 +90,18 @@ class FlameConnectSelectEntity(SelectEntity, FlameConnectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
-
         key = self.entity_description.key
         enum_value = option.upper().replace(" ", "_")
 
         if key == "flame_color":
-            new_param = dataclasses.replace(param, flame_color=FlameColor[enum_value])
+            await self.coordinator.async_write_fields(
+                self._fire_id, FlameEffectParam, flame_color=FlameColor[enum_value]
+            )
         elif key == "brightness":
-            new_param = dataclasses.replace(param, brightness=Brightness[enum_value])
+            await self.coordinator.async_write_fields(
+                self._fire_id, FlameEffectParam, brightness=Brightness[enum_value]
+            )
         elif key == "media_theme":
-            new_param = dataclasses.replace(param, media_theme=MediaTheme[enum_value])
-        else:
-            return
-
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+            await self.coordinator.async_write_fields(
+                self._fire_id, FlameEffectParam, media_theme=MediaTheme[enum_value]
+            )

@@ -8,7 +8,6 @@ Provides three light entities per fireplace:
 
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING, Any
 
 from custom_components.flameconnect.entity import FlameConnectEntity
@@ -33,7 +32,7 @@ _MEDIA_LIGHT_DESCRIPTION = LightEntityDescription(
 _OVERHEAD_LIGHT_DESCRIPTION = LightEntityDescription(
     key="overhead_light",
     translation_key="overhead_light",
-    icon="mdi:ceiling-light",
+    icon="mdi:led-strip-variant",
 )
 
 _LOG_EFFECT_DESCRIPTION = LightEntityDescription(
@@ -116,20 +115,11 @@ class FlameConnectMediaLight(LightEntity, FlameConnectEntity):
         effect: str | None = kwargs.get(ATTR_EFFECT)
         if effect is not None:
             changes["media_theme"] = _MEDIA_THEME_MAP[effect]
-        await self._write_flame_effect(**changes)
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, **changes)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the media light."""
-        await self._write_flame_effect(media_light=LightStatus.OFF)
-
-    async def _write_flame_effect(self, **changes: Any) -> None:
-        """Read-modify-write a FlameEffectParam for this fireplace."""
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
-        new_param = dataclasses.replace(param, **changes)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, media_light=LightStatus.OFF)
 
 
 class FlameConnectOverheadLight(LightEntity, FlameConnectEntity):
@@ -163,20 +153,11 @@ class FlameConnectOverheadLight(LightEntity, FlameConnectEntity):
         rgbw: tuple[int, int, int, int] | None = kwargs.get(ATTR_RGBW_COLOR)
         if rgbw is not None:
             changes["overhead_color"] = _tuple_to_rgbw(rgbw)
-        await self._write_flame_effect(**changes)
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, **changes)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the overhead light."""
-        await self._write_flame_effect(light_status=LightStatus.OFF)
-
-    async def _write_flame_effect(self, **changes: Any) -> None:
-        """Read-modify-write a FlameEffectParam for this fireplace."""
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
-        new_param = dataclasses.replace(param, **changes)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, FlameEffectParam, light_status=LightStatus.OFF)
 
 
 class FlameConnectLogEffectLight(LightEntity, FlameConnectEntity):
@@ -207,17 +188,8 @@ class FlameConnectLogEffectLight(LightEntity, FlameConnectEntity):
         rgbw: tuple[int, int, int, int] | None = kwargs.get(ATTR_RGBW_COLOR)
         if rgbw is not None:
             changes["color"] = _tuple_to_rgbw(rgbw)
-        await self._write_log_effect(**changes)
+        await self.coordinator.async_write_fields(self._fire_id, LogEffectParam, **changes)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the log effect."""
-        await self._write_log_effect(log_effect=LogEffect.OFF)
-
-    async def _write_log_effect(self, **changes: Any) -> None:
-        """Read-modify-write a LogEffectParam for this fireplace."""
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, LogEffectParam))
-        new_param = dataclasses.replace(param, **changes)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, LogEffectParam, log_effect=LogEffect.OFF)

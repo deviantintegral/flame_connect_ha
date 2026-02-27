@@ -7,7 +7,6 @@ fan_only, schedule).
 
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING, Any
 
 from custom_components.flameconnect.const import LOGGER
@@ -122,23 +121,13 @@ class FlameConnectClimate(FlameConnectEntity, ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set the HVAC mode (heat or off)."""
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, HeatParam))
         status = HeatStatus.ON if hvac_mode == HVACMode.HEAT else HeatStatus.OFF
-        new_param = dataclasses.replace(param, heat_status=status)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, HeatParam, heat_status=status)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set the preset mode."""
         mode = HeatMode[preset_mode.upper()]
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, HeatParam))
-        new_param = dataclasses.replace(param, heat_mode=mode)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, HeatParam, heat_mode=mode)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set the target temperature."""
@@ -148,9 +137,4 @@ class FlameConnectClimate(FlameConnectEntity, ClimateEntity):
         temp_unit = self._get_param(TempUnitParam)
         if temp_unit is not None and temp_unit.unit == TempUnit.FAHRENHEIT:
             temperature = temperature * 9 / 5 + 32
-        client = self.coordinator.config_entry.runtime_data.client
-        overview = await client.get_fire_overview(self._fire_id)
-        param = next(p for p in overview.parameters if isinstance(p, HeatParam))
-        new_param = dataclasses.replace(param, setpoint_temperature=temperature)
-        await client.write_parameters(self._fire_id, [new_param])
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_write_fields(self._fire_id, HeatParam, setpoint_temperature=temperature)

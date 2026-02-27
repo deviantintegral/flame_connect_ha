@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING
 
 from custom_components.flameconnect.entity import FlameConnectEntity
@@ -30,7 +29,7 @@ NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         native_min_value=1,
         native_max_value=5,
         native_step=1,
-        icon="mdi:fan",
+        icon="mdi:fire-circle",
     ),
     NumberEntityDescription(
         key="timer_duration",
@@ -116,32 +115,14 @@ class FlameConnectNumberEntity(NumberEntity, FlameConnectEntity):
         return None
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set the value."""
-        client = self.coordinator.config_entry.runtime_data.client
+        """Set the value using debounced writes to coalesce rapid changes."""
         key = self.entity_description.key
 
         if key == "flame_speed":
-            overview = await client.get_fire_overview(self._fire_id)
-            param = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
-            new_param = dataclasses.replace(param, flame_speed=int(value))
-            await client.write_parameters(self._fire_id, [new_param])
-
+            await self.coordinator.async_write_fields_debounced(self._fire_id, FlameEffectParam, flame_speed=int(value))
         elif key == "timer_duration":
-            overview = await client.get_fire_overview(self._fire_id)
-            current = next(p for p in overview.parameters if isinstance(p, TimerParam))
-            new_param = TimerParam(timer_status=current.timer_status, duration=int(value))
-            await client.write_parameters(self._fire_id, [new_param])
-
+            await self.coordinator.async_write_fields_debounced(self._fire_id, TimerParam, duration=int(value))
         elif key == "sound_volume":
-            overview = await client.get_fire_overview(self._fire_id)
-            current = next(p for p in overview.parameters if isinstance(p, SoundParam))
-            new_param = dataclasses.replace(current, volume=int(value))
-            await client.write_parameters(self._fire_id, [new_param])
-
+            await self.coordinator.async_write_fields_debounced(self._fire_id, SoundParam, volume=int(value))
         elif key == "sound_file":
-            overview = await client.get_fire_overview(self._fire_id)
-            current = next(p for p in overview.parameters if isinstance(p, SoundParam))
-            new_param = dataclasses.replace(current, sound_file=int(value))
-            await client.write_parameters(self._fire_id, [new_param])
-
-        await self.coordinator.async_request_refresh()
+            await self.coordinator.async_write_fields_debounced(self._fire_id, SoundParam, sound_file=int(value))
