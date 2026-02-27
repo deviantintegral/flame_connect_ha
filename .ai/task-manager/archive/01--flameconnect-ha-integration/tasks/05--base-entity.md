@@ -2,7 +2,7 @@
 id: 5
 group: "entities"
 dependencies: [4]
-status: "pending"
+status: "completed"
 created: "2026-02-27"
 skills:
   - ha-entities

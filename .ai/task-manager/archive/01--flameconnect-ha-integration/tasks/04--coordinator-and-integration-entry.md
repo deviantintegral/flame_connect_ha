@@ -2,7 +2,7 @@
 id: 4
 group: "core"
 dependencies: [2]
-status: "pending"
+status: "completed"
 created: "2026-02-27"
 skills:
   - ha-coordinator
