@@ -52,7 +52,7 @@ class FlameConnectEntity(CoordinatorEntity["FlameConnectDataUpdateCoordinator"])
         fire = self.coordinator.data[self._fire_id].fire
         info = DeviceInfo(
             identifiers={(DOMAIN, self._fire_id)},
-            name=fire.friendly_name,
+            default_name=fire.friendly_name,
             manufacturer=fire.brand,
             model=fire.product_type,
             model_id=fire.product_model,
