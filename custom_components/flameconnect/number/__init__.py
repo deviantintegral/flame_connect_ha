@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from custom_components.flameconnect.entity import FlameConnectEntity
-from flameconnect import FlameEffectParam, SoundParam, TimerParam
+from flameconnect import FlameEffectParam, SoundParam, TimerParam, TimerStatus
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.const import EntityCategory, UnitOfTime
 
@@ -127,8 +127,14 @@ class FlameConnectNumberEntity(NumberEntity, FlameConnectEntity):
         key = self.entity_description.key
 
         if key == "timer_duration":
-            self.coordinator.timer_durations[self._fire_id] = int(value)
+            duration = int(value)
+            self.coordinator.timer_durations[self._fire_id] = duration
             self.async_write_ha_state()
+            current = self._get_param(TimerParam)
+            if current and current.timer_status == TimerStatus.ENABLED:
+                await self.coordinator.async_write_fields_debounced(
+                    self._fire_id, TimerParam, timer_status=TimerStatus.ENABLED, duration=duration
+                )
             return
 
         if key == "flame_speed":
