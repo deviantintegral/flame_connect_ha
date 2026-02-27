@@ -13,10 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from custom_components.flameconnect.api import (
-    FlameConnectApiClientAuthenticationError,
-    FlameConnectApiClientError,
-)
+from custom_components.flameconnect.api import FlameConnectApiClientAuthenticationError, FlameConnectApiClientError
 from custom_components.flameconnect.const import LOGGER
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
