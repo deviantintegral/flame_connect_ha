@@ -1,0 +1,13 @@
+{
+  "domain": "flameconnect",
+  "name": "FlameConnect",
+  "codeowners": [
+    "@deviantintegral"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/deviantintegral/flameconnect_ha",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/deviantintegral/flameconnect_ha/issues",
+  "version": "0.1.0"
+}

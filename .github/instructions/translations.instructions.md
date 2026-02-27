@@ -4,7 +4,7 @@ applyTo: "**/translations/*.json"
 
 # Translation Files Instructions
 
-**Applies to:** `custom_components/ha_integration_domain/translations/*.json`
+**Applies to:** `custom_components/flameconnect/translations/*.json`
 
 ## Schema Validation
 
@@ -47,7 +47,7 @@ Translation files define user-facing text for config flows, options, entities, a
   "config": {
     "error": {
       "invalid_auth": "Invalid credentials",
-      "stale_auth": "[%key:component::ha_integration_domain::config::error::invalid_auth%]"
+      "stale_auth": "[%key:component::flameconnect::config::error::invalid_auth%]"
     }
   }
 }
