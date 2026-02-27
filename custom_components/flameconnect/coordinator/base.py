@@ -121,7 +121,20 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         Acquires the lock for *fire_id*, fetches a fresh overview from
         the API, applies *changes* via ``dataclasses.replace``, writes
         back, then triggers a coordinator refresh.
+
+        Any pending debounced writes for the same ``(fire_id, param_type)``
+        are absorbed into this write so they are not lost.
         """
+        key = (fire_id, param_type)
+        pending = self._pending_writes.pop(key, None)
+        if pending is not None:
+            cancel = self._debounce_timers.pop(key, None)
+            if cancel is not None:
+                cancel()
+            # Pending changes first; explicit changes take priority.
+            pending.update(changes)
+            changes = pending
+
         async with self._write_locks[fire_id]:
             overview = await self.client.get_fire_overview(fire_id)
             param = next(p for p in overview.parameters if isinstance(p, param_type))
