@@ -7,6 +7,7 @@ effects across multiple installations.
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import timedelta
 from random import randint
 from typing import TYPE_CHECKING
@@ -55,13 +56,15 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         """Discover all fires during first refresh."""
         self.fires = await self.client.get_fires()
         for fire in self.fires:
+            enabled_features = [f.name for f in dataclasses.fields(fire.features) if getattr(fire.features, f.name)]
             LOGGER.debug(
-                "Discovered fire %s (%s): with_heat=%s, brand=%s, model=%s",
+                "Discovered fire %s (%s): with_heat=%s, brand=%s, model=%s, features=%s",
                 fire.friendly_name,
                 fire.fire_id,
                 fire.with_heat,
                 fire.brand,
                 fire.product_type,
+                ", ".join(enabled_features) if enabled_features else "none",
             )
 
     async def _async_update_data(self) -> dict[str, FireOverview]:
