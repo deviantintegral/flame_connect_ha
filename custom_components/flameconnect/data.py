@@ -1,16 +1,15 @@
-"""Custom types for flameconnect.
+"""Custom types for FlameConnect.
 
-This module defines the runtime data structure attached to each config entry.
+Defines the runtime data structure attached to each config entry.
 Access pattern: entry.runtime_data.client / entry.runtime_data.coordinator
-
-The FlameConnectConfigEntry type alias is used throughout the integration
-for type-safe access to the config entry's runtime data.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+
+from flameconnect import FlameConnectClient
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -22,11 +21,11 @@ type FlameConnectConfigEntry = ConfigEntry[FlameConnectData]
 
 @dataclass
 class FlameConnectData:
-    """Runtime data for flameconnect config entries.
+    """Runtime data for FlameConnect config entries.
 
     Stored as entry.runtime_data after successful setup.
     Provides typed access to the API client and coordinator instances.
     """
 
-    client: Any
+    client: FlameConnectClient
     coordinator: FlameConnectDataUpdateCoordinator

@@ -1,104 +1,77 @@
-"""
-Core DataUpdateCoordinator implementation for flameconnect.
+"""DataUpdateCoordinator for the FlameConnect integration.
 
-This module contains the main coordinator class that manages data fetching
-and updates for all entities in the integration. It handles refresh cycles,
-error handling, and triggers reauthentication when needed.
-
-For more information on coordinators:
-https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
+Fetches fire discovery data once at setup, then polls per-fire overview
+data on a 24-hour interval with random jitter to avoid thundering-herd
+effects across multiple installations.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from datetime import timedelta
+from random import randint
+from typing import TYPE_CHECKING
 
-from custom_components.flameconnect.const import LOGGER
+from custom_components.flameconnect.const import DOMAIN, LOGGER
+from flameconnect import ApiError, AuthenticationError, FireOverview, FlameConnectClient, FlameConnectError
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 if TYPE_CHECKING:
     from custom_components.flameconnect.data import FlameConnectConfigEntry
+    from flameconnect import Fire
+    from homeassistant.core import HomeAssistant
 
 
-class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator):
-    """
-    Class to manage fetching data from the API.
-
-    This coordinator handles all data fetching for the integration and distributes
-    updates to all entities. It manages:
-    - Periodic data updates based on update_interval
-    - Error handling and recovery
-    - Authentication failure detection and reauthentication triggers
-    - Data distribution to all entities
-    - Context-based data fetching (only fetch data for active entities)
-
-    For more information:
-    https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
+class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOverview]]):
+    """Coordinator that polls FlameConnect cloud for fireplace data.
 
     Attributes:
         config_entry: The config entry for this integration instance.
+        fires: List of discovered fires, populated by _async_setup.
     """
 
     config_entry: FlameConnectConfigEntry
+    fires: list[Fire]
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: FlameConnectClient,
+        entry: FlameConnectConfigEntry,
+    ) -> None:
+        """Initialise the coordinator with a 24 h + jitter update interval."""
+        jitter = timedelta(minutes=randint(0, 60))
+        super().__init__(
+            hass,
+            LOGGER,
+            config_entry=entry,
+            name=DOMAIN,
+            update_interval=timedelta(hours=24) + jitter,
+        )
+        self.client = client
 
     async def _async_setup(self) -> None:
-        """
-        Set up the coordinator.
+        """Discover all fires during first refresh."""
+        self.fires = await self.client.get_fires()
 
-        This method is called automatically during async_config_entry_first_refresh()
-        and is the ideal place for one-time initialization tasks such as:
-        - Loading device information
-        - Setting up event listeners
-        - Initializing caches
-
-        This runs before the first data fetch, ensuring any required setup
-        is complete before entities start requesting data.
-        """
-        # Example: Fetch device info once at startup
-        # device_info = await self.config_entry.runtime_data.client.get_device_info()
-        # self._device_id = device_info["id"]
-        LOGGER.debug("Coordinator setup complete for %s", self.config_entry.entry_id)
-
-    async def _async_update_data(self) -> Any:
-        """
-        Fetch data from API endpoint.
-
-        This is the only method that should be implemented in a DataUpdateCoordinator.
-        It is called automatically based on the update_interval.
-
-        Context-based fetching:
-        The coordinator tracks which entities are currently listening via async_contexts().
-        This allows optimizing API calls to only fetch data that's actually needed.
-        For example, if only sensor entities are enabled, we can skip fetching switch data.
-
-        The API client uses the credentials from config_entry to authenticate:
-        - username: from config_entry.data["username"]
-        - password: from config_entry.data["password"]
-
-        Expected API response structure (example):
-        {
-            "userId": 1,      # Used as device identifier
-            "id": 1,          # Data record ID
-            "title": "...",   # Additional metadata
-            "body": "...",    # Additional content
-            # In production, would include:
-            # "air_quality": {"aqi": 45, "pm25": 12.3},
-            # "filter": {"life_remaining": 75, "runtime_hours": 324},
-            # "settings": {"fan_speed": "medium", "humidity": 55}
-        }
-
-        Returns:
-            The data from the API as a dictionary.
-
-        Raises:
-            ConfigEntryAuthFailed: If authentication fails, triggers reauthentication.
-            UpdateFailed: If data fetching fails for other reasons, optionally with retry_after.
-        """
-        # TODO: API client integration will be implemented in Task 04
+    async def _async_update_data(self) -> dict[str, FireOverview]:
+        """Fetch overview data for every discovered fire."""
         try:
-            return await self.config_entry.runtime_data.client.async_get_data()
-        except Exception as exception:
-            raise UpdateFailed(
-                translation_domain="flameconnect",
-                translation_key="update_failed",
-            ) from exception
+            result: dict[str, FireOverview] = {}
+            for fire in self.fires:
+                result[fire.fire_id] = await self.client.get_fire_overview(fire.fire_id)
+        except AuthenticationError as err:
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                "auth_expired",
+                is_fixable=True,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key="auth_expired",
+            )
+            raise ConfigEntryAuthFailed from err
+        except (ApiError, FlameConnectError) as err:
+            raise UpdateFailed(str(err)) from err
+        else:
+            return result

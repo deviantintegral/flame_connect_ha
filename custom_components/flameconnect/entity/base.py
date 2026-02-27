@@ -64,5 +64,5 @@ class FlameConnectEntity(CoordinatorEntity[FlameConnectDataUpdateCoordinator]):
             },
             name=coordinator.config_entry.title,
             manufacturer=coordinator.config_entry.domain,
-            model=coordinator.data.get("model", "Unknown"),
+            model=None,
         )
