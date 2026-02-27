@@ -18,6 +18,7 @@ BUTTON_DESCRIPTIONS: tuple[ButtonEntityDescription, ...] = (
     ButtonEntityDescription(
         key="refresh",
         name="Refresh Data",
+        icon="mdi:refresh",
     ),
 )
 
@@ -42,8 +43,6 @@ async def async_setup_entry(
 
 class FlameConnectRefreshButton(ButtonEntity, FlameConnectEntity):
     """Button to trigger a data refresh from the FlameConnect cloud."""
-
-    _attr_icon = "mdi:refresh"
 
     def __init__(
         self,

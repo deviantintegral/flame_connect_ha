@@ -30,6 +30,7 @@ NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         native_min_value=1,
         native_max_value=5,
         native_step=1,
+        icon="mdi:fan",
     ),
     NumberEntityDescription(
         key="timer_duration",
@@ -38,6 +39,7 @@ NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         native_max_value=480,
         native_step=1,
         native_unit_of_measurement=UnitOfTime.MINUTES,
+        icon="mdi:timer-sand",
     ),
     NumberEntityDescription(
         key="sound_volume",
@@ -47,6 +49,7 @@ NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         native_step=1,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.CONFIG,
+        icon="mdi:volume-high",
     ),
     NumberEntityDescription(
         key="sound_file",
@@ -56,6 +59,7 @@ NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         native_step=1,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.CONFIG,
+        icon="mdi:music-note",
     ),
 )
 

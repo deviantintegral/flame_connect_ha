@@ -25,18 +25,21 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         name="Connection State",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
+        icon="mdi:cloud-check-outline",
     ),
     SensorEntityDescription(
         key="software_version",
         name="Software Version",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
+        icon="mdi:chip",
     ),
     SensorEntityDescription(
         key="error_codes",
         name="Error Codes",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
+        icon="mdi:alert-circle-outline",
     ),
 )
 
@@ -44,6 +47,7 @@ TIMER_END_DESCRIPTION = SensorEntityDescription(
     key="timer_end",
     name="Timer End",
     device_class=SensorDeviceClass.TIMESTAMP,
+    icon="mdi:timer-sand-complete",
 )
 
 

@@ -36,16 +36,19 @@ SELECT_DESCRIPTIONS: tuple[SelectEntityDescription, ...] = (
         key="flame_color",
         translation_key="flame_color",
         options=FLAME_COLOR_OPTIONS,
+        icon="mdi:palette",
     ),
     SelectEntityDescription(
         key="brightness",
         translation_key="brightness",
         options=BRIGHTNESS_OPTIONS,
+        icon="mdi:brightness-6",
     ),
     SelectEntityDescription(
         key="media_theme",
         translation_key="media_theme",
         options=MEDIA_THEME_OPTIONS,
+        icon="mdi:palette-swatch-variant",
     ),
 )
 

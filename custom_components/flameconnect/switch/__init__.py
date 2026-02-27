@@ -37,22 +37,27 @@ SWITCH_DESCRIPTIONS: tuple[SwitchEntityDescription, ...] = (
     SwitchEntityDescription(
         key="power",
         name="Power",
+        icon="mdi:fireplace",
     ),
     SwitchEntityDescription(
         key="flame_effect",
         name="Flame effect",
+        icon="mdi:fire",
     ),
     SwitchEntityDescription(
         key="pulsating_effect",
         name="Pulsating effect",
+        icon="mdi:pulse",
     ),
     SwitchEntityDescription(
         key="ambient_sensor",
         name="Ambient sensor",
+        icon="mdi:brightness-auto",
     ),
     SwitchEntityDescription(
         key="timer",
         name="Timer",
+        icon="mdi:timer-outline",
     ),
 )
 

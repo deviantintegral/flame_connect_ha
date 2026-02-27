@@ -27,16 +27,19 @@ _MEDIA_THEME_MAP: dict[str, MediaTheme] = {theme.name.lower().replace("_", " "):
 _MEDIA_LIGHT_DESCRIPTION = LightEntityDescription(
     key="media_light",
     translation_key="media_light",
+    icon="mdi:led-strip-variant",
 )
 
 _OVERHEAD_LIGHT_DESCRIPTION = LightEntityDescription(
     key="overhead_light",
     translation_key="overhead_light",
+    icon="mdi:ceiling-light",
 )
 
 _LOG_EFFECT_DESCRIPTION = LightEntityDescription(
     key="log_effect",
     translation_key="log_effect",
+    icon="mdi:campfire",
 )
 
 
