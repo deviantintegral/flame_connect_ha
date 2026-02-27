@@ -434,3 +434,77 @@ The implementation replaces scaffolded demo code. The existing package structure
 - 2026-02-27: Added reauth repair flow — repairs.py moved from delete to rewrite list; repair issue created on auth failure, deleted on successful reauth.
 - 2026-02-27: Third refinement pass — resolved platform list (removed BINARY_SENSOR, connection state is a sensor); fixed FlameConnectData/coordinator data flow (fires stored on coordinator, not runtime data); clarified temperature unit handling (entity declares Celsius, HA converts for display, integration converts for fireplace's native unit); specified config entry unique_id (slugified email); verified all 17 CLI set parameters are covered; confirmed boost_duration and log_pattern are not CLI-settable (YAGNI); removed services.yaml/service_actions entirely; added diagnostics.py to rewrite list; added repairs.py to delete list; added binary_sensor/ to directory removal list.
 - 2026-02-27: Added Automated Testing section — test directory structure mirroring integration, conftest.py fixtures (mock FlameConnectClient, mock MSAL, MockConfigEntry), mocking strategy at library boundary, test categories for config flow/coordinator/all entity platforms/button/repair flow, HA-standard testing patterns (core interfaces, snapshots, markers).
+- 2026-02-27: Generated 14 tasks with execution blueprint (7 phases).
+
+## Execution Blueprint
+
+### Dependency Diagram
+
+```mermaid
+graph TD
+    T01["01: Scaffold Cleanup + Infrastructure"] --> T02["02: Token Management"]
+    T02 --> T03["03: Config Flow"]
+    T02 --> T04["04: Coordinator + Entry + Repairs + Diagnostics"]
+    T04 --> T05["05: Base Entity"]
+    T05 --> T06["06: Switch Entities"]
+    T05 --> T07["07: Climate Entity"]
+    T05 --> T08["08: Light Entities"]
+    T05 --> T09["09: Select + Number Entities"]
+    T05 --> T10["10: Sensor + Button Entities"]
+    T03 --> T11["11: Translations"]
+    T06 --> T11
+    T07 --> T11
+    T08 --> T11
+    T09 --> T11
+    T10 --> T11
+    T03 --> T12["12: Core Tests"]
+    T04 --> T12
+    T06 --> T13["13: Entity Platform Tests"]
+    T07 --> T13
+    T08 --> T13
+    T09 --> T13
+    T10 --> T13
+    T12 --> T13
+    T11 --> T14["14: Documentation"]
+```
+
+### Phase 1: Foundation
+**Parallel Tasks:**
+- Task 01: Scaffold Cleanup + Project Infrastructure
+
+### Phase 2: Authentication Core
+**Parallel Tasks:**
+- Task 02: Token Management (depends on: 01)
+
+### Phase 3: Integration Core
+**Parallel Tasks:**
+- Task 03: Config Flow (depends on: 02)
+- Task 04: Coordinator + Integration Entry + Repairs + Diagnostics (depends on: 02)
+
+### Phase 4: Entity Foundation
+**Parallel Tasks:**
+- Task 05: Base Entity + Device Registration (depends on: 04)
+- Task 12: Core Tests (depends on: 03, 04)
+
+### Phase 5: Entity Platforms
+**Parallel Tasks:**
+- Task 06: Switch Entities (depends on: 05)
+- Task 07: Climate Entity (depends on: 05)
+- Task 08: Light Entities (depends on: 05)
+- Task 09: Select + Number Entities (depends on: 05)
+- Task 10: Sensor + Button Entities (depends on: 05)
+
+### Phase 6: Integration Testing + UI
+**Parallel Tasks:**
+- Task 11: Translations (depends on: 03, 06, 07, 08, 09, 10)
+- Task 13: Entity Platform Tests (depends on: 06, 07, 08, 09, 10, 12)
+
+### Phase 7: Documentation
+**Parallel Tasks:**
+- Task 14: Documentation (depends on: 11)
+
+### Execution Summary
+- Total Phases: 7
+- Total Tasks: 14
+- Maximum Parallelism: 5 tasks (in Phase 5)
+- Critical Path Length: 7 phases (01 → 02 → 04 → 05 → 06 → 13 → done, or 01 → 02 → 03 → 11 → 14)
