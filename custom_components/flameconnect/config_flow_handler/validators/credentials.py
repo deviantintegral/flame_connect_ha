@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import cast
 from urllib.parse import parse_qs, urlparse
 
 import msal
@@ -47,14 +46,10 @@ async def validate_credentials(email: str, password: str) -> str:
 
     auth_uri: str = flow["auth_uri"]
 
-    redirect_url = cast(
-        str,
-        await asyncio.to_thread(
-            b2c_login_with_credentials,
-            auth_uri,
-            email,
-            password,
-        ),
+    redirect_url = await b2c_login_with_credentials(
+        auth_uri,
+        email,
+        password,
     )
 
     parsed = urlparse(redirect_url)
