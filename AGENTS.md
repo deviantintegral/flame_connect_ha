@@ -11,7 +11,7 @@ This is a Home Assistant custom integration that was generated from a blueprint 
 - **Domain:** `flameconnect`
 - **Title:** FlameConnect
 - **Repository:** deviantintegral/flameconnect_ha
-- **Library:** [flameconnect](https://pypi.org/project/flameconnect/) (v0.3.0) — Flame Connect cloud API client
+- **Library:** [flameconnect](https://pypi.org/project/flameconnect/) (v0.4.0) — Flame Connect cloud API client
 - **Auth:** Azure AD B2C via MSAL, credentials used once then only OAuth tokens stored
 
 **Key directories:**
@@ -227,6 +227,7 @@ This integration uses the following identifiers consistently:
 - Use `EntityDescription` dataclasses for static entity metadata
 - Read-before-write: fetch fresh `FireOverview`, extract parameter, `dataclasses.replace()`, write back
 - FlameEffectParam is a 12-field frozen bundle — always read before modifying any field
+- Feature-gated entity creation: platforms check `fire.features.<flag>` (from `FireFeatures`) before creating entities — only entities for supported features are registered
 
 **Code organization principles:**
 
