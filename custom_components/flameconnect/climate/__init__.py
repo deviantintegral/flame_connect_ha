@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING, Any
 
+from custom_components.flameconnect.const import LOGGER
 from custom_components.flameconnect.entity import FlameConnectEntity
 from flameconnect import HeatControl, HeatMode, HeatModeParam, HeatParam, HeatStatus, TempUnit, TempUnitParam
 from homeassistant.components.climate import ClimateEntity, ClimateEntityDescription
@@ -34,9 +35,22 @@ async def async_setup_entry(
 ) -> None:
     """Set up FlameConnect climate entities."""
     coordinator = entry.runtime_data.coordinator
-    async_add_entities(
+    entities = [
         FlameConnectClimate(coordinator, CLIMATE_DESCRIPTION, fire) for fire in coordinator.fires if fire.with_heat
+    ]
+    LOGGER.debug(
+        "Climate setup: %d fires discovered, %d with heat capability",
+        len(coordinator.fires),
+        len(entities),
     )
+    for fire in coordinator.fires:
+        LOGGER.debug(
+            "Fire %s (%s): with_heat=%s",
+            fire.friendly_name,
+            fire.fire_id,
+            fire.with_heat,
+        )
+    async_add_entities(entities)
 
 
 class FlameConnectClimate(FlameConnectEntity, ClimateEntity):

@@ -54,6 +54,15 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
     async def _async_setup(self) -> None:
         """Discover all fires during first refresh."""
         self.fires = await self.client.get_fires()
+        for fire in self.fires:
+            LOGGER.debug(
+                "Discovered fire %s (%s): with_heat=%s, brand=%s, model=%s",
+                fire.friendly_name,
+                fire.fire_id,
+                fire.with_heat,
+                fire.brand,
+                fire.product_type,
+            )
 
     async def _async_update_data(self) -> dict[str, FireOverview]:
         """Fetch overview data for every discovered fire."""
