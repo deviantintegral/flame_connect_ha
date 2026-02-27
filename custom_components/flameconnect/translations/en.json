@@ -2,35 +2,27 @@
   "config": {
     "step": {
       "user": {
-        "description": "If you need help with the configuration have a look at the [documentation]({documentation_url}).",
         "data": {
-          "username": "Username",
-          "password": "Password"
-        }
-      },
-      "reconfigure": {
-        "description": "Update the credentials for this integration.",
-        "data": {
-          "username": "Username",
+          "email": "Email",
           "password": "Password"
         }
       },
       "reauth_confirm": {
         "title": "Reauthenticate Integration",
-        "description": "The credentials for {username} are no longer valid. Please provide updated credentials to restore access.",
+        "description": "Your session has expired. Please sign in again.",
         "data": {
-          "username": "Username",
+          "email": "Email",
           "password": "Password"
         }
       }
     },
     "error": {
-      "auth": "Username/Password is wrong.",
-      "connection": "Unable to connect to the server.",
-      "unknown": "Unknown error occurred."
+      "invalid_auth": "Invalid email or password.",
+      "cannot_connect": "Unable to connect to the authentication service.",
+      "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "This entry is already configured."
+      "already_configured": "This account is already configured."
     }
   },
   "options": {
