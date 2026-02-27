@@ -125,7 +125,7 @@ log_header "Installing test dependencies"
 uv pip install --requirement requirements_test.txt
 
 log_header "Installing runtime dependencies"
-if [[ -s requirements.txt ]] && grep -qv '^#' requirements.txt | grep -q '[^[:space:]]'; then
+if [[ -s requirements.txt ]] && grep -v '^#' requirements.txt | grep -q '[^[:space:]]'; then
     uv pip install --requirement requirements.txt
 else
     log_info "No runtime dependencies defined (this is normal for blueprints)"
@@ -171,6 +171,19 @@ else
     else
         log_info "Skipping pre-commit hooks (not a Git repository)"
     fi
+fi
+
+# Symlink the integration into config/custom_components/ so HA discovers it.
+# The integration domain "flameconnect" matches the PyPI library name, so we
+# cannot use PYTHONPATH (it would cause a circular import). The symlink lets HA
+# find the integration without adding custom_components/ to sys.path.
+log_header "Linking integration into config"
+mkdir -p config/custom_components
+if [[ ! -e config/custom_components/flameconnect ]]; then
+    ln -sf "${PWD}/custom_components/flameconnect" config/custom_components/flameconnect
+    log_info "Symlinked flameconnect integration into config/custom_components/"
+else
+    log_info "Integration link already exists"
 fi
 
 log_success "Bootstrap complete"
