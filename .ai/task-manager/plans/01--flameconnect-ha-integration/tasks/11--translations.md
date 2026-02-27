@@ -2,7 +2,7 @@
 id: 11
 group: "ui"
 dependencies: [3, 6, 7, 8, 9, 10]
-status: "pending"
+status: "completed"
 created: "2026-02-27"
 skills:
   - ha-translations

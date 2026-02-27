@@ -11,6 +11,8 @@ This is a Home Assistant custom integration that was generated from a blueprint 
 - **Domain:** `flameconnect`
 - **Title:** FlameConnect
 - **Repository:** deviantintegral/flameconnect_ha
+- **Library:** [flameconnect](https://pypi.org/project/flameconnect/) (v0.3.0) — Flame Connect cloud API client
+- **Auth:** Azure AD B2C via MSAL, credentials used once then only OAuth tokens stored
 
 **Key directories:**
 
@@ -195,30 +197,36 @@ This integration uses the following identifiers consistently:
 
 **Package organization (DO NOT create other packages):**
 
-- `api/` - API client and exceptions
-- `coordinator/` - Data update coordinator
-- `config_flow_handler/` - Config flow, options, validators, schemas
-  - `validators/*.py` - Config flow validation functions
-  - `schemas/*.py` - Data schemas for config flow steps
-- `entity/` - Base entity classes
-- `entity_utils/` - Entity-specific helpers (device_info, state formatting)
-- `[platform]/` - Entity platforms (sensor, switch, etc.)
-- `service_actions/` - Service action implementations
-- `utils/` - Integration-wide utilities (string helpers, general validators)
+- `api/` - Token management (MSAL token provider for FlameConnectClient)
+- `coordinator/` - Data update coordinator (24h polling with jitter)
+- `config_flow_handler/` - Config flow and reauth
+  - `validators/*.py` - Credential validation (B2C auth)
+  - `schemas/*.py` - Voluptuous schemas for config flow steps
+- `entity/` - Base entity class with multi-device support
+- `entity_utils/` - Entity-specific helpers
+- `switch/` - Power, flame effect, pulsating effect, ambient sensor, timer
+- `climate/` - Heat control with temperature and presets
+- `light/` - Media light, overhead light, log effect (RGBW)
+- `select/` - Flame color, brightness, media theme
+- `number/` - Flame speed, timer duration, sound volume, sound file
+- `sensor/` - Connection state, software version, error codes (diagnostic)
+- `button/` - Manual data refresh
+- `utils/` - Integration-wide utilities
 
 **Do NOT create:**
 
 - `helpers/`, `ha_helpers/`, or similar packages - use `utils/` or `entity_utils/` instead
 - `common/`, `shared/`, `lib/` - use existing packages above
+- `service_actions/` - no custom services; use entity platforms
 - New top-level packages without explicit approval
 
 **Key patterns:**
 
-- Entities → Coordinator → API Client (never skip layers)
+- Entities → Coordinator → FlameConnectClient (via flameconnect library)
 - Each platform in own directory with `__init__.py`
-- One entity class per file for clarity
-- Individual entity classes in separate files (e.g., `air_quality.py`)
 - Use `EntityDescription` dataclasses for static entity metadata
+- Read-before-write: fetch fresh `FireOverview`, extract parameter, `dataclasses.replace()`, write back
+- FlameEffectParam is a 12-field frozen bundle — always read before modifying any field
 
 **Code organization principles:**
 
@@ -317,15 +325,6 @@ python3 -m script.scaffold config_flow_oauth2     # OAuth2 flow
 - Always set unique_id for discovered entries
 
 See `.github/instructions/config_flow.instructions.md` for comprehensive patterns.
-
-**Service actions:**
-
-- Define in `services.yaml` with full descriptions (legacy filename)
-- Implement handlers in `service_actions/` directory
-- **Register in `async_setup()`** - NOT in `async_setup_entry()` (Quality Scale!)
-- Format: `<integration_domain>.<action_name>`
-
-See `.github/instructions/service_actions.instructions.md` for service patterns.
 
 **Coordinator:**
 

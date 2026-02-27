@@ -7,68 +7,43 @@
 [![hacs][hacsbadge]][hacs]
 ![Project Maintenance][maintenance-shield]
 
-<!--
-Uncomment and customize these badges if you want to use them:
+A Home Assistant custom integration for controlling fireplaces via the [Flame Connect](https://github.com/deviantintegral/flameconnect) cloud API.
 
-[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
-[![Discord][discord-shield]][discord]
--->
-
-**✨ Develop in the cloud:** Want to contribute or customize this integration? Open it directly in GitHub Codespaces - no local setup required!
+**Develop in the cloud:** Open it directly in GitHub Codespaces - no local setup required!
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/deviantintegral/flameconnect_ha?quickstart=1)
 
-## ✨ Features
+## Features
 
-- **Easy Setup**: Simple configuration through the UI - no YAML required
-- **Air Quality Monitoring**: Track AQI and PM2.5 levels in real-time
-- **Filter Management**: Monitor filter life and get replacement alerts
-- **Smart Control**: Adjust fan speed, target humidity, and operating modes
-- **Child Lock**: Safety feature to prevent accidental changes
-- **Diagnostic Info**: View filter life, runtime hours, and device statistics
-- **Reconfigurable**: Change credentials anytime without removing the integration
-- **Options Flow**: Adjust settings like update interval after setup
-- **Custom Services**: Advanced control with built-in service calls
+- **Full fireplace control**: Power, flame effects, heat, lights, timers, and more
+- **Multi-device support**: Each registered fireplace appears as its own device
+- **Secure authentication**: Email and password are used once during setup, then only OAuth tokens are stored
+- **Manual refresh**: Data refreshes on demand via a button entity (24-hour automatic background refresh keeps tokens alive)
+- **RGBW light control**: Media light, overhead light, and log effect with full color support
 
-**This integration will set up the following platforms.**
+**This integration sets up the following platforms:**
 
 Platform | Description
 -- | --
-`sensor` | Air quality index (AQI), PM2.5, filter life, and runtime
-`binary_sensor` | API connection status and filter replacement alert
-`switch` | Child lock and LED display controls
-`select` | Fan speed selection (Low/Medium/High/Auto)
-`number` | Target humidity setting (30-80%)
-`button` | Reset filter timer after replacement
-`fan` | Air purifier fan control with speed settings
+`switch` | Power, flame effect, pulsating effect, ambient sensor, timer
+`climate` | Heat control with temperature and preset modes
+`light` | Media light, overhead light, log effect (RGBW)
+`select` | Flame color, brightness, media theme
+`number` | Flame speed, timer duration, sound volume, sound file
+`sensor` | Connection state, software version, error codes (diagnostic, disabled by default)
+`button` | Refresh data on demand
 
-> **💡 Interactive Demo**: The entities are interconnected for demonstration:
->
-> - Press the **Reset Filter Timer** button → **Filter Life Remaining** sensor updates to 100%
-> - Change the **Air Purifier** fan speed → **Fan Speed** select syncs automatically
-> - Change the **Fan Speed** select → **Air Purifier** fan syncs automatically
+## Installation
 
-## 🚀 Quick Start
-
-### Step 1: Install the Integration
-
-**Prerequisites:** This integration requires [HACS](https://hacs.xyz/) (Home Assistant Community Store) to be installed.
-
-Click the button below to open the integration directly in HACS:
+### HACS (Recommended)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=deviantintegral&repository=flameconnect_ha&category=integration)
 
-Then:
-
 1. Click "Download" to install the integration
-2. **Restart Home Assistant** (required after installation)
-
-> **Note:** The My Home Assistant redirect will first take you to a landing page. Click the button there to open your Home Assistant instance.
+2. **Restart Home Assistant**
 
 <details>
-<summary>**Manual Installation (Advanced)**</summary>
-
-If you prefer not to use HACS:
+<summary><b>Manual Installation</b></summary>
 
 1. Download the `custom_components/flameconnect/` folder from this repository
 2. Copy it to your Home Assistant's `custom_components/` directory
@@ -76,196 +51,78 @@ If you prefer not to use HACS:
 
 </details>
 
-### Step 2: Add and Configure the Integration
-
-**Important:** You must have installed the integration first (see Step 1) and restarted Home Assistant!
-
-#### Option 1: One-Click Setup (Quick)
-
-Click the button below to open the configuration dialog:
+## Setup
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=flameconnect)
 
-Follow the setup wizard:
+Or manually:
 
-1. Enter your username
-2. Enter your password
-3. Click Submit
-
-That's it! The integration will start loading your data.
-
-#### Option 2: Manual Configuration
-
-1. Go to **Settings** → **Devices & Services**
+1. Go to **Settings** > **Devices & Services**
 2. Click **"+ Add Integration"**
 3. Search for "FlameConnect"
-4. Follow the same setup steps as Option 1
+4. Enter your Flame Connect email and password
+5. Click Submit
 
-### Step 3: Adjust Settings (Optional)
+Your credentials are used once to authenticate with the Flame Connect cloud service. Only the resulting OAuth tokens are stored - your email and password are never saved.
 
-After setup, you can adjust options:
+## Entities
 
-1. Go to **Settings** → **Devices & Services**
-2. Find **FlameConnect**
-3. Click **Configure** to adjust:
-   - Update interval (how often to refresh data)
-   - Enable debug logging
-
-You can also **Reconfigure** your credentials anytime without removing the integration.
-
-### Step 4: Start Using!
-
-The integration creates several entities for your air purifier:
-
-- **Sensors**: Air quality index, PM2.5 levels, filter life remaining, total runtime
-- **Binary Sensors**: API connection status, filter replacement alert
-- **Switches**: Child lock, LED display control
-- **Select**: Fan speed (Low/Medium/High/Auto)
-- **Number**: Target humidity (30-80%)
-- **Button**: Reset filter timer
-- **Fan**: Air purifier fan control
-
-Find all entities in **Settings** → **Devices & Services** → **FlameConnect** → click on the device.
-
-## Available Entities
-
-### Sensors
-
-- **Air Quality Index (AQI)**: Real-time air quality measurement (0-500 scale)
-  - Includes air quality category (Good/Moderate/Unhealthy/etc.)
-  - Health recommendations based on current AQI
-- **PM2.5**: Fine particulate matter concentration in µg/m³
-- **Filter Life Remaining** (Diagnostic): Shows remaining filter life as percentage
-- **Total Runtime** (Diagnostic): Total operating hours of the device
-
-### Binary Sensors
-
-- **API Connection**: Shows whether the connection to the API is active
-  - On: Connected and receiving data
-  - Off: Connection lost or authentication failed
-  - Shows update interval and API endpoint information
-- **Filter Replacement Needed**: Alerts when filter needs replacement
-  - Shows estimated days remaining
-  - Turns on when filter life is low
+Each fireplace device exposes the following entities:
 
 ### Switches
 
-- **Child Lock**: Prevents accidental button presses on the device
-  - Icon changes based on state (locked/unlocked)
-- **LED Display**: Enable/disable the LED display
-  - Disabled by default - enable in entity settings if needed
+- **Power** - Main fireplace power (on = manual mode, off = standby)
+- **Flame effect** - Toggle flame visual effect
+- **Pulsating effect** - Toggle pulsating flame effect
+- **Ambient sensor** - Toggle ambient temperature sensor
+- **Timer** - Enable/disable the fireplace timer
 
-### Select
+### Climate
 
-- **Fan Speed**: Choose from Low, Medium, High, or Auto
-  - Icon changes dynamically based on selected speed
-  - Auto mode adjusts speed based on air quality
-  - Syncs bidirectionally with the Air Purifier fan entity
+- **Heat** - Temperature control with preset modes (Normal, Boost, Eco, Fan only, Schedule). Only available when heat control is enabled on the fireplace.
 
-### Number
+### Lights
 
-- **Target Humidity**: Set desired humidity level (30-80%)
-  - Adjustable in 5% increments
-  - Displayed as a slider in the UI
+- **Media light** - RGBW media accent light with theme effects
+- **Overhead light** - RGBW overhead light
+- **Log effect** - RGBW log effect light
+
+### Selects
+
+- **Flame color** - Choose flame color (Yellow red, Blue, Red, etc.)
+- **Brightness** - High or Low
+- **Media theme** - Media light theme (White, Blue, Purple, Prism, etc.)
+
+### Numbers
+
+- **Flame speed** - Flame animation speed (1-5)
+- **Timer duration** - Timer duration in minutes (1-480)
+- **Sound volume** - Sound volume (disabled by default)
+- **Sound file** - Sound file selection (disabled by default)
+
+### Sensors (Diagnostic, disabled by default)
+
+- **Connection state** - Fireplace connection status
+- **Software version** - UI, control, and relay firmware versions
+- **Error codes** - Fireplace error byte values
 
 ### Button
 
-- **Reset Filter Timer**: Reset the filter life to 100%
-  - Press to reset after replacing the filter
-  - Instantly updates the Filter Life Remaining sensor
+- **Refresh data** - Manually refresh all fireplace data from the cloud API
 
-### Fan
+## Data Refresh
 
-- **Air Purifier**: Control the air purifier fan speed and power
-  - Three speed levels: Low, Medium, High
-  - Syncs bidirectionally with the Fan Speed select entity
-  - Turn on/off functionality
-
-## Custom Services
-
-The integration provides services for advanced automation:
-
-### `flameconnect.example_action`
-
-Perform a custom action (customize this for your needs).
-
-**Example:**
-
-```yaml
-service: flameconnect.example_action
-data:
-  # Add your parameters here
-```
-
-### `flameconnect.reload_data`
-
-Manually refresh data from the API without waiting for the update interval.
-
-**Example:**
-
-```yaml
-service: flameconnect.reload_data
-```
-
-Use these services in automations or scripts for more control.
-
-## Configuration Options
-
-### During Setup
-
-Name | Required | Description
--- | -- | --
-Username | Yes | Your account username
-Password | Yes | Your account password
-
-### After Setup (Options)
-
-You can change these anytime by clicking **Configure**:
-
-Name | Default | Description
--- | -- | --
-Update Interval | 1 hour | How often to refresh data
-Enable Debugging | Off | Enable extra debug logging
+The integration automatically refreshes data every 24 hours to keep OAuth tokens alive. For on-demand updates, use the **Refresh data** button entity. Each fireplace has its own refresh button.
 
 ## Troubleshooting
 
-### Authentication Issues
+### Re-authentication
 
-#### Reauthentication
+If your OAuth tokens expire, Home Assistant will display a repair notification. Click through the repair flow to re-enter your credentials and restore connectivity.
 
-If your credentials expire or change, Home Assistant will automatically prompt you to reauthenticate:
+### Debug Logging
 
-1. Go to **Settings** → **Devices & Services**
-2. Look for **"Action Required"** or **"Configuration Required"** message on the integration
-3. Click **"Reconfigure"** or follow the prompt
-4. Enter your updated credentials
-5. Click Submit
-
-The integration will automatically resume normal operation with the new credentials.
-
-#### Manual Credential Update
-
-You can also update credentials at any time without waiting for an error:
-
-1. Go to **Settings** → **Devices & Services**
-2. Find **FlameConnect**
-3. Click the **3 dots menu** → **Reconfigure**
-4. Enter new username/password
-5. Click Submit
-
-#### Connection Status
-
-Monitor your connection status with the **API Connection** binary sensor:
-
-- **On** (Connected): Integration is receiving data normally
-- **Off** (Disconnected): Connection lost or authentication failed
-  - Check the binary sensor attributes for diagnostic information
-  - Verify credentials if authentication failed
-  - Check network connectivity
-
-### Enable Debug Logging
-
-To enable debug logging for this integration, add the following to your `configuration.yaml`:
+Add to `configuration.yaml`:
 
 ```yaml
 logger:
@@ -274,88 +131,38 @@ logger:
     custom_components.flameconnect: debug
 ```
 
-### Common Issues
+## Contributing
 
-#### Authentication Errors
+Contributions are welcome! Please open an issue or pull request.
 
-If you receive authentication errors:
-
-1. Verify your username and password are correct
-2. Check that your account has the necessary permissions
-3. Wait for the automatic reauthentication prompt, or manually reconfigure
-4. Check the API Connection binary sensor for status
-
-#### Device Not Responding
-
-If your device is not responding:
-
-1. Check the **API Connection** binary sensor - it should be "On"
-2. Check your network connection
-3. Verify the device is powered on
-4. Check the integration diagnostics (Settings → Devices & Services → FlameConnect → 3 dots → Download diagnostics)
-
-## 🤝 Contributing
-
-Contributions are welcome! Please open an issue or pull request if you have suggestions or improvements.
-
-### 🛠️ Development Setup
-
-Want to contribute or customize this integration? You have two options:
+### Development Setup
 
 #### Cloud Development (Recommended)
 
-The easiest way to get started - develop directly in your browser with GitHub Codespaces:
-
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/deviantintegral/flameconnect_ha?quickstart=1)
-
-- ✅ Zero local setup required
-- ✅ Pre-configured development environment
-- ✅ Home Assistant included for testing
-- ✅ 60 hours/month free for personal accounts
 
 #### Local Development
 
-Prefer working on your machine? You'll need:
-
-- Docker Desktop
-- VS Code with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-
-Then:
+Requirements: Docker Desktop, VS Code with [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
 1. Clone this repository
 2. Open in VS Code
 3. Click "Reopen in Container" when prompted
 
-Both options give you the same fully-configured development environment with Home Assistant, Python 3.13, and all necessary tools.
+### Validation
 
----
+```bash
+script/check   # Type-check + lint + spell
+script/test    # Run tests
+```
 
-## 🤖 AI-Assisted Development
-
-> **ℹ️ Transparency Notice**
->
-> This integration was developed with assistance from AI coding agents (GitHub Copilot, Claude, and others). While the codebase follows Home Assistant Core standards, AI-generated code may not be reviewed or tested to the same extent as manually written code.
->
-> AI tools were used to:
->
-> - Generate boilerplate code following Home Assistant patterns
-> - Implement standard integration features (config flow, coordinator, entities)
-> - Ensure code quality and type safety
-> - Write documentation and comments
->
-> Please be aware that AI-assisted development may result in unexpected behavior or edge cases that haven't been thoroughly tested. If you encounter any issues, please [open an issue](../../issues) on GitHub.
->
-> *Note: This section can be removed or modified if AI assistance was not used in your integration's development.*
-
----
-
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**Made with ❤️ by [@deviantintegral][user_profile]**
+**Made with care by [@deviantintegral][user_profile]**
 
 ---
 
@@ -368,10 +175,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 [releases-shield]: https://img.shields.io/github/release/deviantintegral/flameconnect_ha.svg?style=for-the-badge
 [releases]: https://github.com/deviantintegral/flameconnect_ha/releases
 [user_profile]: https://github.com/deviantintegral
-
-<!-- Optional badge definitions - uncomment if needed:
-[buymecoffee]: https://www.buymeacoffee.com/deviantintegral
-[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
-[discord]: https://discord.gg/Qa5fW2R
-[discord-shield]: https://img.shields.io/discord/330944238910963714.svg?style=for-the-badge
--->
