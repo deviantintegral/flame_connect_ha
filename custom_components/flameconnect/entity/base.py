@@ -1,68 +1,85 @@
-"""
-Base entity class for flameconnect.
-
-This module provides the base entity class that all integration entities inherit from.
-It handles common functionality like device info, unique IDs, and coordinator integration.
-
-For more information on entities:
-https://developers.home-assistant.io/docs/core/entity
-https://developers.home-assistant.io/docs/core/entity/index/#common-properties
-"""
+"""Base entity for FlameConnect."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
-from custom_components.flameconnect.coordinator import FlameConnectDataUpdateCoordinator
+from custom_components.flameconnect.const import DOMAIN
+from flameconnect import SoftwareVersionParam
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 if TYPE_CHECKING:
+    from custom_components.flameconnect.coordinator import FlameConnectDataUpdateCoordinator
+    from flameconnect import Fire, Parameter
     from homeassistant.helpers.entity import EntityDescription
 
+_T = TypeVar("_T", bound="Parameter")
 
-class FlameConnectEntity(CoordinatorEntity[FlameConnectDataUpdateCoordinator]):
-    """
-    Base entity class for flameconnect.
 
-    All entities in this integration inherit from this class, which provides:
-    - Automatic coordinator updates
-    - Device info management
-    - Unique ID generation
-    - Attribution and naming conventions
-
-    For more information:
-    https://developers.home-assistant.io/docs/core/entity
-    https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
-    """
+class FlameConnectEntity(CoordinatorEntity["FlameConnectDataUpdateCoordinator"]):
+    """Base class for FlameConnect entities."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
         coordinator: FlameConnectDataUpdateCoordinator,
-        entity_description: EntityDescription,
+        description: EntityDescription,
+        fire: Fire,
     ) -> None:
-        """
-        Initialize the base entity.
+        """Initialise the base entity.
 
         Args:
             coordinator: The data update coordinator for this entity.
-            entity_description: The entity description defining characteristics.
+            description: The entity description defining characteristics.
+            fire: The fireplace this entity belongs to.
 
         """
         super().__init__(coordinator)
-        self.entity_description = entity_description
-        # Include entity description key in unique_id to support multiple entities
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{entity_description.key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={
-                (
-                    coordinator.config_entry.domain,
-                    coordinator.config_entry.entry_id,
-                ),
-            },
-            name=coordinator.config_entry.title,
-            manufacturer=coordinator.config_entry.domain,
-            model=None,
+        self.entity_description = description
+        self._fire_id = fire.fire_id
+        self._attr_unique_id = f"{fire.fire_id}_{description.key}"
+
+    @property
+    def available(self) -> bool:
+        """Return True if the fireplace is present in coordinator data."""
+        return super().available and self._fire_id in self.coordinator.data
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this fireplace."""
+        fire = self.coordinator.data[self._fire_id].fire
+        info = DeviceInfo(
+            identifiers={(DOMAIN, self._fire_id)},
+            name=fire.friendly_name,
+            manufacturer=fire.brand,
+            model=fire.product_type,
+            model_id=fire.product_model,
         )
+        sw = self._get_param(SoftwareVersionParam)
+        if sw is not None:
+            info["sw_version"] = (
+                f"UI:{sw.ui_major}.{sw.ui_minor}.{sw.ui_test} "
+                f"Ctrl:{sw.control_major}.{sw.control_minor}.{sw.control_test} "
+                f"Relay:{sw.relay_major}.{sw.relay_minor}.{sw.relay_test}"
+            )
+        return info
+
+    def _get_param(self, param_type: type[_T]) -> _T | None:
+        """Extract a parameter of the given type from coordinator data.
+
+        Args:
+            param_type: The parameter class to search for.
+
+        Returns:
+            The matching parameter instance, or None if not found.
+
+        """
+        overview = self.coordinator.data.get(self._fire_id)
+        if overview is None:
+            return None
+        for param in overview.parameters:
+            if isinstance(param, param_type):
+                return param  # type: ignore[return-value]
+        return None
