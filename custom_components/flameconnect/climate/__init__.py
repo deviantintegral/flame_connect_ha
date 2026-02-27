@@ -35,21 +35,26 @@ async def async_setup_entry(
 ) -> None:
     """Set up FlameConnect climate entities."""
     coordinator = entry.runtime_data.coordinator
-    entities = [
-        FlameConnectClimate(coordinator, CLIMATE_DESCRIPTION, fire) for fire in coordinator.fires if fire.with_heat
-    ]
+    entities: list[FlameConnectClimate] = []
+    for fire in coordinator.fires:
+        overview = coordinator.data.get(fire.fire_id)
+        has_heat_params = overview is not None and any(
+            isinstance(p, (HeatParam, HeatModeParam)) for p in overview.parameters
+        )
+        LOGGER.debug(
+            "Fire %s (%s): with_heat=%s, has_heat_params=%s",
+            fire.friendly_name,
+            fire.fire_id,
+            fire.with_heat,
+            has_heat_params,
+        )
+        if has_heat_params:
+            entities.append(FlameConnectClimate(coordinator, CLIMATE_DESCRIPTION, fire))
     LOGGER.debug(
         "Climate setup: %d fires discovered, %d with heat capability",
         len(coordinator.fires),
         len(entities),
     )
-    for fire in coordinator.fires:
-        LOGGER.debug(
-            "Fire %s (%s): with_heat=%s",
-            fire.friendly_name,
-            fire.fire_id,
-            fire.with_heat,
-        )
     async_add_entities(entities)
 
 
