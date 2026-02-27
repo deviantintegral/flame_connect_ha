@@ -157,3 +157,5 @@ logger:
 
     # Your integration debug logging - shows EVERYTHING from your integration
     custom_components.flameconnect: debug
+    # Underlying library — API calls, protocol encoding/decoding
+    flameconnect: debug
