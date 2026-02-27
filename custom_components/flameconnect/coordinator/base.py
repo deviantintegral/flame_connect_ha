@@ -70,6 +70,10 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         self._pending_writes: dict[tuple[str, type[Parameter]], dict[str, Any]] = {}
         self._debounce_timers: dict[tuple[str, type[Parameter]], Callable[[], None]] = {}
 
+        # Desired timer duration per fire, stored locally (not written to
+        # the API until the timer switch is actually turned on).
+        self.timer_durations: dict[str, int] = {}
+
     async def _async_setup(self) -> None:
         """Discover all fires during first refresh."""
         self.fires = await self.client.get_fires()

@@ -199,14 +199,17 @@ class FlameConnectTimerSwitch(FlameConnectSwitchBase):
         return param.timer_status == TimerStatus.ENABLED
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Enable the timer with a valid duration.
+        """Enable the timer with the locally stored duration.
 
-        The API requires both status and duration in every write.  Use
-        the current HA-known duration, falling back to 60 minutes
-        (matching the library TUI default) if the value is zero.
+        The API requires both status and duration in every write.
+        Duration is read from the coordinator's local store (set by
+        the timer duration number entity), falling back to the API
+        value or 60 minutes (matching the library TUI default).
         """
-        current = self._get_param(TimerParam)
-        duration = current.duration if current and current.duration > 0 else 60
+        duration = self.coordinator.timer_durations.get(self._fire_id)
+        if not duration or duration <= 0:
+            current = self._get_param(TimerParam)
+            duration = current.duration if current and current.duration > 0 else 60
         await self.coordinator.async_write_fields(
             self._fire_id, TimerParam, timer_status=TimerStatus.ENABLED, duration=duration
         )

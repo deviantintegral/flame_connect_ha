@@ -95,6 +95,9 @@ class FlameConnectNumberEntity(NumberEntity, FlameConnectEntity):
             return float(param.flame_speed)
 
         if key == "timer_duration":
+            stored = self.coordinator.timer_durations.get(self._fire_id)
+            if stored is not None:
+                return float(stored)
             param = self._get_param(TimerParam)
             if param is None:
                 return None
@@ -115,13 +118,21 @@ class FlameConnectNumberEntity(NumberEntity, FlameConnectEntity):
         return None
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set the value using debounced writes to coalesce rapid changes."""
+        """Set the value.
+
+        Timer duration is stored locally and only sent to the API when
+        the timer switch is turned on.  Other values use debounced
+        writes to coalesce rapid slider changes.
+        """
         key = self.entity_description.key
+
+        if key == "timer_duration":
+            self.coordinator.timer_durations[self._fire_id] = int(value)
+            self.async_write_ha_state()
+            return
 
         if key == "flame_speed":
             await self.coordinator.async_write_fields_debounced(self._fire_id, FlameEffectParam, flame_speed=int(value))
-        elif key == "timer_duration":
-            await self.coordinator.async_write_fields_debounced(self._fire_id, TimerParam, duration=int(value))
         elif key == "sound_volume":
             await self.coordinator.async_write_fields_debounced(self._fire_id, SoundParam, volume=int(value))
         elif key == "sound_file":
