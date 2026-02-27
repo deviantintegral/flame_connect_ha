@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -9,6 +10,8 @@ from custom_components.flameconnect.entity import FlameConnectEntity
 from flameconnect import ErrorParam, SoftwareVersionParam, TimerParam, TimerStatus
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
 from homeassistant.const import EntityCategory
+from homeassistant.core import callback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.util import dt as dt_util
 
 if TYPE_CHECKING:
@@ -126,6 +129,7 @@ class FlameConnectTimerEndSensor(SensorEntity, FlameConnectEntity):
     _timer_end: datetime | None = None
     _last_status: TimerStatus | None = None
     _last_duration: int | None = None
+    _cancel_refresh: Callable[[], None] | None = None
 
     def __init__(
         self,
@@ -144,6 +148,7 @@ class FlameConnectTimerEndSensor(SensorEntity, FlameConnectEntity):
             self._timer_end = None
             self._last_status = None
             self._last_duration = None
+            self._cancel_post_timer_refresh()
             return
 
         status = param.timer_status
@@ -151,12 +156,41 @@ class FlameConnectTimerEndSensor(SensorEntity, FlameConnectEntity):
 
         if status != TimerStatus.ENABLED:
             self._timer_end = None
+            self._cancel_post_timer_refresh()
         elif status != self._last_status or duration != self._last_duration:
             # Timer was just enabled or duration changed — compute new end time.
             self._timer_end = dt_util.utcnow() + timedelta(minutes=duration)
+            self._schedule_post_timer_refresh()
 
         self._last_status = status
         self._last_duration = duration
+
+    def _cancel_post_timer_refresh(self) -> None:
+        """Cancel any pending post-timer refresh."""
+        if self._cancel_refresh is not None:
+            self._cancel_refresh()
+            self._cancel_refresh = None
+
+    def _schedule_post_timer_refresh(self) -> None:
+        """Schedule a coordinator refresh 60 s after the timer expires."""
+        self._cancel_post_timer_refresh()
+        if self._timer_end is None:
+            return
+        delay = (self._timer_end - dt_util.utcnow()).total_seconds() + 60
+        if delay <= 0:
+            return
+        self._cancel_refresh = async_call_later(self.hass, delay, self._post_timer_refresh)
+
+    @callback
+    def _post_timer_refresh(self, _now: datetime) -> None:
+        """Refresh coordinator data after the timer has expired."""
+        self._cancel_refresh = None
+        self.hass.async_create_task(self.coordinator.async_request_refresh())
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel scheduled refresh on entity removal."""
+        self._cancel_post_timer_refresh()
+        await super().async_will_remove_from_hass()
 
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator data update by recomputing the timer end."""
