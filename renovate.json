@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "matchDepNames": ["homeassistant"],
+      "enabled": false,
+      "description": "Home Assistant version should match the homeassistant key in hacs.json"
+    }
+  ]
+}
