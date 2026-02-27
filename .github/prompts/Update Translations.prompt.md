@@ -120,8 +120,8 @@ If not provided, ask for:
 
 **Related Files:**
 
-- English: [#file:custom_components/ha_integration_domain/translations/en.json]
-- German: [#file:custom_components/ha_integration_domain/translations/de.json]
+- English: [#file:custom_components/flameconnect/translations/en.json]
+- German: [#file:custom_components/flameconnect/translations/de.json]
 - Schema: [#file:schemas/json/translation_schema.json]
 - Documentation: Reference [#file:.github/instructions/translations.instructions.md]
 
