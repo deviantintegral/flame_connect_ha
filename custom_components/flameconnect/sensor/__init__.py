@@ -198,6 +198,14 @@ class FlameConnectTimerEndSensor(SensorEntity, FlameConnectEntity):
         super()._handle_coordinator_update()
 
     @property
+    def available(self) -> bool:
+        """Return False when the timer is not running."""
+        if not super().available:
+            return False
+        param = self._get_param(TimerParam)
+        return param is not None and param.timer_status == TimerStatus.ENABLED
+
+    @property
     def native_value(self) -> datetime | None:
         """Return the timer end time, or None if expired or inactive."""
         if self._timer_end is not None and self._timer_end <= dt_util.utcnow():
