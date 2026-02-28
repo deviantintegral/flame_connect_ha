@@ -1,0 +1,14 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "custom_components/flameconnect/manifest.json",
+          "jsonpath": "$.version"
+        }
+      ]
+    }
+  }
+}
