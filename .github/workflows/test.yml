@@ -1,25 +1,14 @@
-# Copilot Coding Agent Setup
-#
-# This workflow configures the environment for GitHub Copilot coding agent.
-# It runs automatically before Copilot starts working on any task.
-#
-# Documentation:
-# - https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment
-# - https://github.blog/changelog/2025-07-30-copilot-coding-agent-custom-setup-steps-are-more-reliable-and-easier-to-debug/
-
-name: "Copilot Setup Steps"
+name: Test
 
 on:
-  workflow_dispatch:
   push:
-    paths:
-      - .github/workflows/copilot-setup-steps.yml
+    branches:
+      - "main"
   pull_request:
-    paths:
-      - .github/workflows/copilot-setup-steps.yml
+    branches:
+      - "main"
 
-permissions:
-  contents: read
+permissions: {}
 
 # IMPORTANT: Keep HA_VERSION synchronized across all workflow files:
 # - copilot-setup-steps.yml
@@ -27,11 +16,11 @@ permissions:
 # - test.yml
 
 jobs:
-  copilot-setup-steps:
-    runs-on: ubuntu-latest
-
+  pytest:
+    name: "pytest"
+    runs-on: "ubuntu-latest"
     steps:
-      - name: Checkout repository
+      - name: Checkout the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Python
@@ -54,13 +43,17 @@ jobs:
           echo "Home Assistant version: ${HA_VERSION}"
 
       - name: Cache Home Assistant installation
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
           path: |
             .local/ha-venv
           key: ha-venv-${{ runner.os }}-py313-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: |
             ha-venv-${{ runner.os }}-py313-ha${{ steps.ha_version.outputs.HA_VERSION }}-
+            ha-venv-${{ runner.os }}-py313-
 
-      - name: Install dependencies
+      - name: Install requirements
         run: script/setup/bootstrap
+
+      - name: Run tests
+        run: script/test

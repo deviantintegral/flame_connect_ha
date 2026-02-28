@@ -5,4 +5,4 @@
 # Note: Home Assistant core dependencies are already available
 # Only list additional packages your integration needs
 
-flameconnect==0.3.0
+flameconnect==0.4.0
