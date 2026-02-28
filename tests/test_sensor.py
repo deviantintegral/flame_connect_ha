@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from flameconnect import Fire, FireOverview
+from flameconnect import Fire, FireOverview, HeatMode, HeatParam, HeatStatus, TimerParam, TimerStatus
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.flameconnect.sensor import (
@@ -96,3 +96,73 @@ async def test_error_codes_sensor_native_value(
     coordinator = config_entry.runtime_data.coordinator
     sensor = FlameConnectErrorCodesSensor(coordinator, SENSOR_DESCRIPTIONS[2], mock_fire)
     assert sensor.native_value == "00:00:00:00"
+
+
+async def test_timer_end_sensor_setup_with_timer_enabled(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire_overview: FireOverview,
+) -> None:
+    """Test timer end sensor initialises without error when timer is active at setup."""
+    new_params = [
+        TimerParam(timer_status=TimerStatus.ENABLED, duration=30) if isinstance(p, TimerParam) else p
+        for p in mock_fire_overview.parameters
+    ]
+    enabled_overview = FireOverview(fire=mock_fire_overview.fire, parameters=new_params)
+    mock_flameconnect_client.get_fire_overview.return_value = enabled_overview
+
+    await _setup_integration(hass, config_entry, mock_flameconnect_client)
+
+    state = hass.states.get("sensor.living_room_timer_end")
+    assert state is not None
+    assert state.state != "unavailable"
+
+
+async def test_timer_end_sensor_unavailable_when_disabled(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+) -> None:
+    """Test timer end sensor is unavailable when timer is disabled."""
+    await _setup_integration(hass, config_entry, mock_flameconnect_client)
+
+    state = hass.states.get("sensor.living_room_timer_end")
+    assert state is not None
+    assert state.state == "unavailable"
+
+
+async def test_boost_end_sensor_setup_with_boost_active(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire_overview: FireOverview,
+) -> None:
+    """Test boost end sensor initialises without error when boost is active at setup."""
+    new_params = [
+        HeatParam(heat_status=HeatStatus.ON, heat_mode=HeatMode.BOOST, setpoint_temperature=22.0, boost_duration=10)
+        if isinstance(p, HeatParam)
+        else p
+        for p in mock_fire_overview.parameters
+    ]
+    boost_overview = FireOverview(fire=mock_fire_overview.fire, parameters=new_params)
+    mock_flameconnect_client.get_fire_overview.return_value = boost_overview
+
+    await _setup_integration(hass, config_entry, mock_flameconnect_client)
+
+    state = hass.states.get("sensor.living_room_boost_end")
+    assert state is not None
+    assert state.state != "unavailable"
+
+
+async def test_boost_end_sensor_unavailable_when_not_boosting(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+) -> None:
+    """Test boost end sensor is unavailable when heat mode is not boost."""
+    await _setup_integration(hass, config_entry, mock_flameconnect_client)
+
+    state = hass.states.get("sensor.living_room_boost_end")
+    assert state is not None
+    assert state.state == "unavailable"

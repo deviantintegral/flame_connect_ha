@@ -15,11 +15,8 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.util import dt as dt_util
 
 if TYPE_CHECKING:
-    from custom_components.flameconnect.coordinator import FlameConnectDataUpdateCoordinator
     from custom_components.flameconnect.data import FlameConnectConfigEntry
-    from flameconnect import Fire
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity import EntityDescription
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
@@ -140,14 +137,9 @@ class FlameConnectTimerEndSensor(SensorEntity, FlameConnectEntity):
     _last_duration: int | None = None
     _cancel_refresh: Callable[[], None] | None = None
 
-    def __init__(
-        self,
-        coordinator: FlameConnectDataUpdateCoordinator,
-        description: EntityDescription,
-        fire: Fire,
-    ) -> None:
-        """Initialise and compute the initial timer end time."""
-        super().__init__(coordinator, description, fire)
+    async def async_added_to_hass(self) -> None:
+        """Compute the initial timer end once hass is available."""
+        await super().async_added_to_hass()
         self._update_timer_end()
 
     def _update_timer_end(self) -> None:
@@ -235,14 +227,9 @@ class FlameConnectBoostEndSensor(SensorEntity, FlameConnectEntity):
     _last_boost_duration: int | None = None
     _cancel_refresh: Callable[[], None] | None = None
 
-    def __init__(
-        self,
-        coordinator: FlameConnectDataUpdateCoordinator,
-        description: EntityDescription,
-        fire: Fire,
-    ) -> None:
-        """Initialise and compute the initial boost end time."""
-        super().__init__(coordinator, description, fire)
+    async def async_added_to_hass(self) -> None:
+        """Compute the initial boost end once hass is available."""
+        await super().async_added_to_hass()
         self._update_boost_end()
 
     def _update_boost_end(self) -> None:
