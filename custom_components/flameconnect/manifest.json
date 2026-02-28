@@ -8,10 +8,10 @@
   "documentation": "https://github.com/deviantintegral/flameconnect_ha",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/deviantintegral/flameconnect_ha/issues",
   "loggers": [
     "flameconnect"
   ],
-  "issue_tracker": "https://github.com/deviantintegral/flameconnect_ha/issues",
   "requirements": [
     "flameconnect==0.4.0"
   ],
