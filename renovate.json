@@ -1,6 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep manifest.json requirements in sync with requirements.txt via PyPI",
+      "fileMatch": ["^custom_components/[^/]+/manifest\\.json$"],
+      "matchStrings": [
+        "\"(?<depName>[a-zA-Z0-9_.-]+)==(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "pypi"
+    }
+  ],
   "packageRules": [
     {
       "matchDepNames": ["homeassistant"],
