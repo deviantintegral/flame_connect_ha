@@ -74,6 +74,10 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         # the API until the timer switch is actually turned on).
         self.timer_durations: dict[str, int] = {}
 
+        # Desired boost duration per fire, stored locally (not written to
+        # the API until boost mode is actually activated).
+        self.boost_durations: dict[str, int] = {}
+
     async def _async_setup(self) -> None:
         """Discover all fires during first refresh."""
         self.fires = await self.client.get_fires()

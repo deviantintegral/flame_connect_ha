@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from custom_components.flameconnect.entity import FlameConnectEntity
-from flameconnect import ErrorParam, SoftwareVersionParam, TimerParam, TimerStatus
+from flameconnect import ErrorParam, HeatMode, HeatParam, SoftwareVersionParam, TimerParam, TimerStatus
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
@@ -53,6 +53,13 @@ TIMER_END_DESCRIPTION = SensorEntityDescription(
     icon="mdi:timer-sand-complete",
 )
 
+BOOST_END_DESCRIPTION = SensorEntityDescription(
+    key="boost_end",
+    name="Boost End",
+    device_class=SensorDeviceClass.TIMESTAMP,
+    icon="mdi:rocket-launch-outline",
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -74,6 +81,8 @@ async def async_setup_entry(
         )
         if fire.features.count_down_timer:
             entities.append(FlameConnectTimerEndSensor(coordinator, TIMER_END_DESCRIPTION, fire))
+        if fire.features.power_boost:
+            entities.append(FlameConnectBoostEndSensor(coordinator, BOOST_END_DESCRIPTION, fire))
 
     async_add_entities(entities)
 
@@ -211,3 +220,97 @@ class FlameConnectTimerEndSensor(SensorEntity, FlameConnectEntity):
         if self._timer_end is not None and self._timer_end <= dt_util.utcnow():
             self._timer_end = None
         return self._timer_end
+
+
+class FlameConnectBoostEndSensor(SensorEntity, FlameConnectEntity):
+    """Sensor showing when the fireplace boost mode will end.
+
+    Computes the end time locally when boost mode is active. The HA
+    frontend displays timestamp sensors as relative time ("in 5 min")
+    that counts down automatically.
+    """
+
+    _boost_end: datetime | None = None
+    _last_heat_mode: HeatMode | None = None
+    _last_boost_duration: int | None = None
+    _cancel_refresh: Callable[[], None] | None = None
+
+    def __init__(
+        self,
+        coordinator: FlameConnectDataUpdateCoordinator,
+        description: EntityDescription,
+        fire: Fire,
+    ) -> None:
+        """Initialise and compute the initial boost end time."""
+        super().__init__(coordinator, description, fire)
+        self._update_boost_end()
+
+    def _update_boost_end(self) -> None:
+        """Recompute the boost end time if the boost state changed."""
+        heat = self._get_param(HeatParam)
+        if heat is None:
+            self._boost_end = None
+            self._last_heat_mode = None
+            self._last_boost_duration = None
+            self._cancel_post_boost_refresh()
+            return
+
+        heat_mode = heat.heat_mode
+        boost_duration = heat.boost_duration
+
+        if heat_mode != HeatMode.BOOST:
+            self._boost_end = None
+            self._cancel_post_boost_refresh()
+        elif heat_mode != self._last_heat_mode or boost_duration != self._last_boost_duration:
+            self._boost_end = dt_util.utcnow() + timedelta(minutes=boost_duration)
+            self._schedule_post_boost_refresh()
+
+        self._last_heat_mode = heat_mode
+        self._last_boost_duration = boost_duration
+
+    def _cancel_post_boost_refresh(self) -> None:
+        """Cancel any pending post-boost refresh."""
+        if self._cancel_refresh is not None:
+            self._cancel_refresh()
+            self._cancel_refresh = None
+
+    def _schedule_post_boost_refresh(self) -> None:
+        """Schedule a coordinator refresh 60 s after boost expires."""
+        self._cancel_post_boost_refresh()
+        if self._boost_end is None:
+            return
+        delay = (self._boost_end - dt_util.utcnow()).total_seconds() + 60
+        if delay <= 0:
+            return
+        self._cancel_refresh = async_call_later(self.hass, delay, self._post_boost_refresh)
+
+    @callback
+    def _post_boost_refresh(self, _now: datetime) -> None:
+        """Refresh coordinator data after boost has expired."""
+        self._cancel_refresh = None
+        self.hass.async_create_task(self.coordinator.async_request_refresh())
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel scheduled refresh on entity removal."""
+        self._cancel_post_boost_refresh()
+        await super().async_will_remove_from_hass()
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle coordinator data update by recomputing the boost end."""
+        self._update_boost_end()
+        super()._handle_coordinator_update()
+
+    @property
+    def available(self) -> bool:
+        """Return False when boost is not active."""
+        if not super().available:
+            return False
+        heat = self._get_param(HeatParam)
+        return heat is not None and heat.heat_mode == HeatMode.BOOST
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the boost end time, or None if expired or inactive."""
+        if self._boost_end is not None and self._boost_end <= dt_util.utcnow():
+            self._boost_end = None
+        return self._boost_end

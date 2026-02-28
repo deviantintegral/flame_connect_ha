@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from custom_components.flameconnect.entity import FlameConnectEntity
-from flameconnect import FlameEffectParam, SoundParam, TimerParam, TimerStatus
+from flameconnect import FlameEffectParam, HeatMode, HeatParam, SoundParam, TimerParam, TimerStatus
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.const import EntityCategory, UnitOfTime
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 _FEATURE_REQUIREMENTS: dict[str, str] = {
     "flame_speed": "flame_fan_speed",
     "timer_duration": "count_down_timer",
+    "boost_duration": "power_boost",
     "sound_volume": "sound",
     "sound_file": "sound",
 }
@@ -39,6 +40,15 @@ NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
         native_step=1,
         native_unit_of_measurement=UnitOfTime.MINUTES,
         icon="mdi:timer-sand",
+    ),
+    NumberEntityDescription(
+        key="boost_duration",
+        translation_key="boost_duration",
+        native_min_value=1,
+        native_max_value=20,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        icon="mdi:rocket-launch",
     ),
     NumberEntityDescription(
         key="sound_volume",
@@ -103,6 +113,15 @@ class FlameConnectNumberEntity(NumberEntity, FlameConnectEntity):
                 return None
             return float(param.duration)
 
+        if key == "boost_duration":
+            stored = self.coordinator.boost_durations.get(self._fire_id)
+            if stored is not None:
+                return float(stored)
+            heat = self._get_param(HeatParam)
+            if heat is None:
+                return None
+            return float(heat.boost_duration)
+
         if key == "sound_volume":
             param = self._get_param(SoundParam)
             if param is None:
@@ -134,6 +153,17 @@ class FlameConnectNumberEntity(NumberEntity, FlameConnectEntity):
             if current and current.timer_status == TimerStatus.ENABLED:
                 await self.coordinator.async_write_fields_debounced(
                     self._fire_id, TimerParam, timer_status=TimerStatus.ENABLED, duration=duration
+                )
+            return
+
+        if key == "boost_duration":
+            duration = int(value)
+            self.coordinator.boost_durations[self._fire_id] = duration
+            self.async_write_ha_state()
+            heat = self._get_param(HeatParam)
+            if heat and heat.heat_mode == HeatMode.BOOST:
+                await self.coordinator.async_write_fields_debounced(
+                    self._fire_id, HeatParam, heat_mode=HeatMode.BOOST, boost_duration=duration
                 )
             return
 

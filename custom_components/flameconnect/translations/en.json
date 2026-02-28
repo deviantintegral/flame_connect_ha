@@ -109,6 +109,9 @@
       },
       "sound_file": {
         "name": "Sound file"
+      },
+      "boost_duration": {
+        "name": "Boost duration"
       }
     },
     "sensor": {
@@ -120,6 +123,9 @@
       },
       "error_codes": {
         "name": "Error codes"
+      },
+      "boost_end": {
+        "name": "Boost end"
       }
     },
     "button": {

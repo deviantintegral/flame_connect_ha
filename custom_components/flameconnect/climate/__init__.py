@@ -127,7 +127,14 @@ class FlameConnectClimate(FlameConnectEntity, ClimateEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set the preset mode."""
         mode = HeatMode[preset_mode.upper()]
-        await self.coordinator.async_write_fields(self._fire_id, HeatParam, heat_mode=mode)
+        if mode == HeatMode.BOOST:
+            stored = self.coordinator.boost_durations.get(self._fire_id)
+            if stored is None:
+                heat = self._get_param(HeatParam)
+                stored = heat.boost_duration if heat is not None else 15
+            await self.coordinator.async_write_fields(self._fire_id, HeatParam, heat_mode=mode, boost_duration=stored)
+        else:
+            await self.coordinator.async_write_fields(self._fire_id, HeatParam, heat_mode=mode)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set the target temperature."""
