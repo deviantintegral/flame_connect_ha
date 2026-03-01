@@ -114,6 +114,82 @@ Each fireplace device exposes the following entities:
 
 The integration automatically refreshes data every 24 hours to keep OAuth tokens alive. For on-demand updates, use the **Refresh data** button entity. Each fireplace has its own refresh button.
 
+## Quality Scale
+
+Evaluated against the [Home Assistant Integration Quality Scale](https://www.home-assistant.io/docs/quality_scale/).
+
+### Bronze
+
+| Rule | Description | Status |
+|------|-------------|--------|
+| action-setup | Service actions registered in `async_setup` | N/A |
+| appropriate-polling | Polling interval is suitable | :white_check_mark: |
+| brands | Branding assets provided | :x: |
+| common-modules | Common patterns in shared modules | :white_check_mark: |
+| config-flow-test-coverage | Full test coverage for config flow | :x: |
+| config-flow | UI-based setup | :white_check_mark: |
+| dependency-transparency | Dependencies documented in manifest | :white_check_mark: |
+| docs-actions | Service actions documented | N/A |
+| docs-high-level-description | High-level integration description | :white_check_mark: |
+| docs-installation-instructions | Step-by-step installation instructions | :white_check_mark: |
+| docs-removal-instructions | Removal instructions documented | :x: |
+| entity-event-setup | Events subscribed in proper lifecycle methods | N/A |
+| entity-unique-id | All entities have unique IDs | :white_check_mark: |
+| has-entity-name | Entities use `has_entity_name = True` | :white_check_mark: |
+| runtime-data | Runtime data stored in `ConfigEntry.runtime_data` | :white_check_mark: |
+| test-before-configure | Connection validated before config entry creation | :white_check_mark: |
+| test-before-setup | Initialization checks before setup | :white_check_mark: |
+| unique-config-entry | Duplicate config entries prevented | :white_check_mark: |
+
+### Silver
+
+| Rule | Description | Status |
+|------|-------------|--------|
+| action-exceptions | Service actions raise exceptions on failure | N/A |
+| config-entry-unloading | Config entry unloading supported | :white_check_mark: |
+| docs-configuration-parameters | Configuration parameters documented | :white_check_mark: |
+| docs-installation-parameters | Installation parameters documented | :white_check_mark: |
+| entity-unavailable | Entities marked unavailable when appropriate | :white_check_mark: |
+| integration-owner | Active code owner designated | :white_check_mark: |
+| log-when-unavailable | Logs when device/service becomes unavailable | :white_check_mark: |
+| parallel-updates | `PARALLEL_UPDATES` set on entity platforms | :x: |
+| reauthentication-flow | Reauth flow implemented | :white_check_mark: |
+| test-coverage | Above 95% test coverage | :x: |
+
+### Gold
+
+| Rule | Description | Status |
+|------|-------------|--------|
+| devices | Integration creates device representations | :white_check_mark: |
+| diagnostics | Diagnostics implemented with redaction | :white_check_mark: |
+| discovery | Automatic device discovery | N/A |
+| discovery-update-info | Discovery updates network info | N/A |
+| docs-data-update | Data update mechanism documented | :white_check_mark: |
+| docs-examples | Automation examples provided | :x: |
+| docs-known-limitations | Known limitations documented | :x: |
+| docs-supported-devices | Supported devices listed | :x: |
+| docs-supported-functions | Entities and functions documented | :white_check_mark: |
+| docs-troubleshooting | Troubleshooting guidance provided | :white_check_mark: |
+| docs-use-cases | Usage scenarios illustrated | :x: |
+| dynamic-devices | New devices added after setup | :x: |
+| entity-category | Appropriate `EntityCategory` assignments | :white_check_mark: |
+| entity-device-class | Device classes applied where applicable | :white_check_mark: |
+| entity-disabled-by-default | Less common entities disabled by default | :white_check_mark: |
+| entity-translations | Entity names translated | :white_check_mark: |
+| exception-translations | Exception messages support translation | :x: |
+| icon-translations | Icons defined in `icons.json` | :x: |
+| reconfiguration-flow | UI-based reconfiguration | :x: |
+| repair-issues | Repair flows for user intervention | :white_check_mark: |
+| stale-devices | Stale devices automatically removed | :x: |
+
+### Platinum
+
+| Rule | Description | Status |
+|------|-------------|--------|
+| async-dependency | Underlying library is async | :white_check_mark: |
+| inject-websession | HA websession injected into dependency | :white_check_mark: |
+| strict-typing | Strict type checking enforced | :x: |
+
 ## Troubleshooting
 
 ### Re-authentication
