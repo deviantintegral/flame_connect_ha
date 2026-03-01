@@ -57,3 +57,6 @@ jobs:
 
       - name: Lint check
         run: script/lint-check
+
+      - name: Type check
+        run: script/type-check
