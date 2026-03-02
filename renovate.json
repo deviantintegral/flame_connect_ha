@@ -5,7 +5,7 @@
     {
       "customType": "regex",
       "description": "Keep manifest.json requirements in sync with requirements.txt via PyPI",
-      "fileMatch": ["^custom_components/[^/]+/manifest\\.json$"],
+      "managerFilePatterns": ["/^custom_components/[^/]+/manifest\\.json$/"],
       "matchStrings": [
         "\"(?<depName>[a-zA-Z0-9_.-]+)==(?<currentValue>[^\"]+)\""
       ],
