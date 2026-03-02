@@ -133,6 +133,9 @@ async def test_write_fields_optimistic_update(
         await coordinator.async_write_fields("abc123", FlameEffectParam, flame_effect=FlameEffect.OFF)
         mock_refresh.assert_awaited_once()
 
+    # API write must have been performed
+    mock_flameconnect_client.write_parameters.assert_called_once()
+
     # Coordinator data should be optimistically updated
     updated_overview = coordinator.data["abc123"]
     flame_param = next(p for p in updated_overview.parameters if isinstance(p, FlameEffectParam))
@@ -164,6 +167,9 @@ async def test_turn_on_fire_optimistic_update(
         await coordinator.async_turn_on_fire("abc123")
         mock_refresh.assert_awaited_once()
 
+    # API call must have been performed
+    mock_flameconnect_client.turn_on.assert_called_once_with("abc123")
+
     # Mode should be optimistically set to MANUAL
     updated_overview = coordinator.data["abc123"]
     mode_param = next(p for p in updated_overview.parameters if isinstance(p, ModeParam))
@@ -188,6 +194,9 @@ async def test_turn_off_fire_optimistic_update(
     with patch.object(coordinator, "async_request_refresh", new_callable=AsyncMock) as mock_refresh:
         await coordinator.async_turn_off_fire("abc123")
         mock_refresh.assert_awaited_once()
+
+    # API call must have been performed
+    mock_flameconnect_client.turn_off.assert_called_once_with("abc123")
 
     # Mode should be optimistically set to STANDBY
     updated_overview = coordinator.data["abc123"]
