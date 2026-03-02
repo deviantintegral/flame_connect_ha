@@ -20,7 +20,15 @@ from random import randint
 from typing import TYPE_CHECKING, Any
 
 from custom_components.flameconnect.const import DOMAIN, LOGGER
-from flameconnect import ApiError, AuthenticationError, FireOverview, FlameConnectClient, FlameConnectError
+from flameconnect import (
+    ApiError,
+    AuthenticationError,
+    FireMode,
+    FireOverview,
+    FlameConnectClient,
+    FlameConnectError,
+    ModeParam,
+)
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import issue_registry as ir
@@ -128,7 +136,8 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
 
         Acquires the lock for *fire_id*, fetches a fresh overview from
         the API, applies *changes* via ``dataclasses.replace``, writes
-        back, then triggers a coordinator refresh.
+        back, then optimistically updates coordinator data so entities
+        reflect the new state immediately without a second API poll.
 
         Any pending debounced writes for the same ``(fire_id, param_type)``
         are absorbed into this write so they are not lost.
@@ -149,7 +158,7 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
             param = next(p for p in overview.parameters if isinstance(p, param_type))
             new_param = dataclasses.replace(param, **changes)
             await self.client.write_parameters(fire_id, [new_param])
-        await self.async_request_refresh()
+        self._apply_optimistic_param_update(fire_id, param_type, new_param, overview)
 
     async def async_write_fields_debounced(
         self,
@@ -211,14 +220,46 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         await self.async_flush_pending_writes(fire_id)
         async with self._write_locks[fire_id]:
             await self.client.turn_on(fire_id)
-        await self.async_request_refresh()
+        self._apply_optimistic_mode_update(fire_id, FireMode.MANUAL)
 
     async def async_turn_off_fire(self, fire_id: str) -> None:
         """Flush pending writes, then turn the fire off under lock."""
         await self.async_flush_pending_writes(fire_id)
         async with self._write_locks[fire_id]:
             await self.client.turn_off(fire_id)
-        await self.async_request_refresh()
+        self._apply_optimistic_mode_update(fire_id, FireMode.STANDBY)
+
+    @callback
+    def _apply_optimistic_param_update(
+        self,
+        fire_id: str,
+        param_type: type[Parameter],
+        new_param: Parameter,
+        base_overview: FireOverview,
+    ) -> None:
+        """Update coordinator data with written parameter to prevent state bounce.
+
+        After a successful API write, this replaces the old parameter in
+        the coordinator data with the value we just wrote, so entities
+        reflect the new state immediately without waiting for the next
+        API poll (which could return stale data).
+        """
+        new_params: list[Parameter] = [new_param if isinstance(p, param_type) else p for p in base_overview.parameters]
+        new_overview = dataclasses.replace(base_overview, parameters=new_params)
+        new_data = dict(self.data) if self.data else {}
+        new_data[fire_id] = new_overview
+        self.async_set_updated_data(new_data)
+
+    @callback
+    def _apply_optimistic_mode_update(self, fire_id: str, mode: FireMode) -> None:
+        """Update coordinator data with expected fire mode after turn on/off."""
+        if self.data is None or fire_id not in self.data:
+            return
+        overview = self.data[fire_id]
+        current_mode = next((p for p in overview.parameters if isinstance(p, ModeParam)), None)
+        if current_mode is None:
+            return
+        self._apply_optimistic_param_update(fire_id, ModeParam, dataclasses.replace(current_mode, mode=mode), overview)
 
     async def async_shutdown(self) -> None:
         """Cancel all debounce timers and shut down."""
