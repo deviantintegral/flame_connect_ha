@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from flameconnect import (
     ApiError,
@@ -120,7 +120,8 @@ async def test_write_fields_optimistic_update(
     """Test that async_write_fields updates coordinator data optimistically.
 
     After writing, the coordinator should reflect the new parameter value
-    immediately without polling the API again.
+    immediately.  A confirmation refresh is also requested to re-read the
+    API and confirm (or correct) the optimistic state.
     """
     config_entry.add_to_hass(hass)
 
@@ -128,17 +129,14 @@ async def test_write_fields_optimistic_update(
     coordinator.fires = [mock_fire]
     coordinator.async_set_updated_data({"abc123": mock_fire_overview})
 
-    # Write to toggle flame_effect OFF
-    await coordinator.async_write_fields("abc123", FlameEffectParam, flame_effect=FlameEffect.OFF)
+    with patch.object(coordinator, "async_request_refresh", new_callable=AsyncMock) as mock_refresh:
+        await coordinator.async_write_fields("abc123", FlameEffectParam, flame_effect=FlameEffect.OFF)
+        mock_refresh.assert_awaited_once()
 
     # Coordinator data should be optimistically updated
     updated_overview = coordinator.data["abc123"]
     flame_param = next(p for p in updated_overview.parameters if isinstance(p, FlameEffectParam))
     assert flame_param.flame_effect == FlameEffect.OFF
-
-    # The API should NOT have been polled a second time after the write.
-    # One call for the read-before-write inside async_write_fields.
-    assert mock_flameconnect_client.get_fire_overview.call_count == 1
 
 
 async def test_turn_on_fire_optimistic_update(
@@ -162,15 +160,14 @@ async def test_turn_on_fire_optimistic_update(
     coordinator.fires = [mock_fire]
     coordinator.async_set_updated_data({"abc123": standby_overview})
 
-    await coordinator.async_turn_on_fire("abc123")
+    with patch.object(coordinator, "async_request_refresh", new_callable=AsyncMock) as mock_refresh:
+        await coordinator.async_turn_on_fire("abc123")
+        mock_refresh.assert_awaited_once()
 
     # Mode should be optimistically set to MANUAL
     updated_overview = coordinator.data["abc123"]
     mode_param = next(p for p in updated_overview.parameters if isinstance(p, ModeParam))
     assert mode_param.mode == FireMode.MANUAL
-
-    # No additional API poll after the turn_on call
-    mock_flameconnect_client.get_fire_overview.assert_not_called()
 
 
 async def test_turn_off_fire_optimistic_update(
@@ -188,12 +185,11 @@ async def test_turn_off_fire_optimistic_update(
     # Start with MANUAL mode (from fixture default)
     coordinator.async_set_updated_data({"abc123": mock_fire_overview})
 
-    await coordinator.async_turn_off_fire("abc123")
+    with patch.object(coordinator, "async_request_refresh", new_callable=AsyncMock) as mock_refresh:
+        await coordinator.async_turn_off_fire("abc123")
+        mock_refresh.assert_awaited_once()
 
     # Mode should be optimistically set to STANDBY
     updated_overview = coordinator.data["abc123"]
     mode_param = next(p for p in updated_overview.parameters if isinstance(p, ModeParam))
     assert mode_param.mode == FireMode.STANDBY
-
-    # No additional API poll after the turn_off call
-    mock_flameconnect_client.get_fire_overview.assert_not_called()

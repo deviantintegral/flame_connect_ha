@@ -136,8 +136,11 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
 
         Acquires the lock for *fire_id*, fetches a fresh overview from
         the API, applies *changes* via ``dataclasses.replace``, writes
-        back, then optimistically updates coordinator data so entities
-        reflect the new state immediately without a second API poll.
+        back, then immediately pushes the written values into
+        ``coordinator.data`` so entities reflect the new state without
+        waiting for the confirmation refresh.  A follow-up
+        ``async_request_refresh`` re-reads the API to confirm (or
+        correct) the optimistic state.
 
         Any pending debounced writes for the same ``(fire_id, param_type)``
         are absorbed into this write so they are not lost.
@@ -159,6 +162,7 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
             new_param = dataclasses.replace(param, **changes)
             await self.client.write_parameters(fire_id, [new_param])
         self._apply_optimistic_param_update(fire_id, param_type, new_param, overview)
+        await self.async_request_refresh()
 
     async def async_write_fields_debounced(
         self,
@@ -221,6 +225,7 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         async with self._write_locks[fire_id]:
             await self.client.turn_on(fire_id)
         self._apply_optimistic_mode_update(fire_id, FireMode.MANUAL)
+        await self.async_request_refresh()
 
     async def async_turn_off_fire(self, fire_id: str) -> None:
         """Flush pending writes, then turn the fire off under lock."""
@@ -228,6 +233,7 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         async with self._write_locks[fire_id]:
             await self.client.turn_off(fire_id)
         self._apply_optimistic_mode_update(fire_id, FireMode.STANDBY)
+        await self.async_request_refresh()
 
     @callback
     def _apply_optimistic_param_update(
@@ -237,12 +243,12 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         new_param: Parameter,
         base_overview: FireOverview,
     ) -> None:
-        """Update coordinator data with written parameter to prevent state bounce.
+        """Push the just-written parameter into coordinator data immediately.
 
         After a successful API write, this replaces the old parameter in
-        the coordinator data with the value we just wrote, so entities
-        reflect the new state immediately without waiting for the next
-        API poll (which could return stale data).
+        the coordinator data with the value we just wrote so entities
+        reflect the new state right away, before the follow-up
+        ``async_request_refresh`` confirms the value from the API.
         """
         new_params: list[Parameter] = [new_param if isinstance(p, param_type) else p for p in base_overview.parameters]
         new_overview = dataclasses.replace(base_overview, parameters=new_params)
