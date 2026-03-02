@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/deviantintegral/flame_connect_ha/compare/v0.1.0...v0.1.1) (2026-03-01)
+
+
+### Documentation
+
+* add initial quality scale eval ([3424656](https://github.com/deviantintegral/flame_connect_ha/commit/34246561a5236f42f5c0b239591d9282063a2f2e))
+
 ## 0.1.0 (2026-02-28)
 
 
