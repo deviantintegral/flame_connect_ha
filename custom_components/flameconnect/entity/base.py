@@ -38,6 +38,7 @@ class FlameConnectEntity(CoordinatorEntity["FlameConnectDataUpdateCoordinator"])
         """
         super().__init__(coordinator)
         self.entity_description = description
+        self._fire = fire
         self._fire_id = fire.fire_id
         self._attr_unique_id = f"{fire.fire_id}_{description.key}"
 
@@ -49,13 +50,12 @@ class FlameConnectEntity(CoordinatorEntity["FlameConnectDataUpdateCoordinator"])
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info for this fireplace."""
-        fire = self.coordinator.data[self._fire_id].fire
         info = DeviceInfo(
             identifiers={(DOMAIN, self._fire_id)},
-            name=fire.friendly_name,
-            manufacturer=fire.brand,
-            model=fire.product_type,
-            model_id=fire.product_model,
+            name=self._fire.friendly_name,
+            manufacturer=self._fire.brand,
+            model=self._fire.product_type,
+            model_id=self._fire.product_model,
         )
         sw = self._get_param(SoftwareVersionParam)
         if sw is not None:
