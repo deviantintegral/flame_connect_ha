@@ -1,0 +1,7 @@
+{
+  "domain": "dimplex",
+  "name": "Dimplex",
+  "integration_type": "virtual",
+  "supported_by": "flameconnect",
+  "version": "0.1.1"
+}

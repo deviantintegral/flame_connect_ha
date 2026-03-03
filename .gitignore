@@ -5,6 +5,9 @@ config/*
 # Custom components (HACS-installed dependencies and dev symlinks)
 custom_components/*
 !custom_components/flameconnect/
+!custom_components/dimplex/
+!custom_components/faber/
+!custom_components/real_flame/
 
 # Development tool caches and dependency locks
 .ruff_cache/

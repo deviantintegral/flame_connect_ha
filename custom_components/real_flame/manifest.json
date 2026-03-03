@@ -1,0 +1,7 @@
+{
+  "domain": "real_flame",
+  "name": "Real Flame",
+  "integration_type": "virtual",
+  "supported_by": "flameconnect",
+  "version": "0.1.1"
+}

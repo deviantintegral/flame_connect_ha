@@ -61,12 +61,15 @@ fi
 # a circular import (Python finds our __init__.py instead of the library).
 log_header "Linking integration into config"
 mkdir -p "${PWD}/config/custom_components"
-if [[ ! -e "${PWD}/config/custom_components/flameconnect" ]]; then
-    ln -sf "${PWD}/custom_components/flameconnect" "${PWD}/config/custom_components/flameconnect"
-    log_info "Symlinked flameconnect integration"
-else
-    log_info "Integration link already exists"
-fi
+for integration_dir in "${PWD}"/custom_components/*/; do
+    integration_name="$(basename "$integration_dir")"
+    if [[ ! -e "${PWD}/config/custom_components/${integration_name}" ]]; then
+        ln -sf "${integration_dir}" "${PWD}/config/custom_components/${integration_name}"
+        log_info "Symlinked ${integration_name} integration"
+    else
+        log_info "Integration link already exists: ${integration_name}"
+    fi
+done
 
 log_header "Starting Home Assistant in development mode"
 log_info "Config directory: ${PWD}/config"
