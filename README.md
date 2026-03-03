@@ -11,7 +11,7 @@ A Home Assistant custom integration for controlling fireplaces via the [Flame Co
 
 **Develop in the cloud:** Open it directly in GitHub Codespaces - no local setup required!
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/deviantintegral/flameconnect_ha?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/deviantintegral/flame_connect_ha?quickstart=1)
 
 ## Features
 
@@ -37,7 +37,7 @@ Platform | Description
 
 ### HACS (Recommended)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=deviantintegral&repository=flameconnect_ha&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=deviantintegral&repository=flame_connect_ha&category=integration)
 
 1. Click "Download" to install the integration
 2. **Restart Home Assistant**
@@ -215,7 +215,7 @@ Contributions are welcome! Please open an issue or pull request.
 
 #### Cloud Development (Recommended)
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/deviantintegral/flameconnect_ha?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/deviantintegral/flame_connect_ha?quickstart=1)
 
 #### Local Development
 
@@ -242,12 +242,12 @@ This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENS
 
 ---
 
-[commits-shield]: https://img.shields.io/github/commit-activity/y/deviantintegral/flameconnect_ha.svg?style=for-the-badge
-[commits]: https://github.com/deviantintegral/flameconnect_ha/commits/main
+[commits-shield]: https://img.shields.io/github/commit-activity/y/deviantintegral/flame_connect_ha.svg?style=for-the-badge
+[commits]: https://github.com/deviantintegral/flame_connect_ha/commits/main
 [hacs]: https://github.com/hacs/integration
 [hacsbadge]: https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge
-[license-shield]: https://img.shields.io/github/license/deviantintegral/flameconnect_ha.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/deviantintegral/flame_connect_ha.svg?style=for-the-badge
 [maintenance-shield]: https://img.shields.io/badge/maintainer-%40deviantintegral-blue.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/deviantintegral/flameconnect_ha.svg?style=for-the-badge
-[releases]: https://github.com/deviantintegral/flameconnect_ha/releases
+[releases-shield]: https://img.shields.io/github/release/deviantintegral/flame_connect_ha.svg?style=for-the-badge
+[releases]: https://github.com/deviantintegral/flame_connect_ha/releases
 [user_profile]: https://github.com/deviantintegral
