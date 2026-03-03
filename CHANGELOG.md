@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.1](https://github.com/deviantintegral/flame_connect_ha/compare/v0.1.0...v0.1.1) (2026-03-03)
+
+
+### Bug Fixes
+
+* **coordinator:** add optimistic state updates to write methods ([#26](https://github.com/deviantintegral/flame_connect_ha/issues/26)) ([aeca209](https://github.com/deviantintegral/flame_connect_ha/commit/aeca20945f9854fca1f21f155b138cfd9ca74bfb))
+* use fire discovery data for device info instead of overview ([#32](https://github.com/deviantintegral/flame_connect_ha/issues/32)) ([4c71605](https://github.com/deviantintegral/flame_connect_ha/commit/4c716050994d53790e3c6446cbae95b7e01e6f9c))
+
+
+### Documentation
+
+* add initial quality scale eval ([3424656](https://github.com/deviantintegral/flame_connect_ha/commit/34246561a5236f42f5c0b239591d9282063a2f2e))
+* fix links and badges for flame_connect_ha ([#30](https://github.com/deviantintegral/flame_connect_ha/issues/30)) ([cf5298e](https://github.com/deviantintegral/flame_connect_ha/commit/cf5298ed8e1f3918ce0a4f077fd4c2ba7f515d36))
+* replace docker desktop with better solutions ([8aa1bb2](https://github.com/deviantintegral/flame_connect_ha/commit/8aa1bb2f39b8f7d6fd5702d999d55d8e2e5b3e78))
+* set HACS badge to custom ([#31](https://github.com/deviantintegral/flame_connect_ha/issues/31)) ([4fab09b](https://github.com/deviantintegral/flame_connect_ha/commit/4fab09b7c2605f2c4926247bba57d15fbb8f84bb))
+
 ## 0.1.0 (2026-02-28)
 
 
