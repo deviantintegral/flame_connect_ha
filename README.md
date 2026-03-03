@@ -219,7 +219,10 @@ Contributions are welcome! Please open an issue or pull request.
 
 #### Local Development
 
-Requirements: Docker Desktop, VS Code with [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+Requirements:
+
+* Docker or other container runner (docker-ce + WSL2, Lima VM, Rancher / Podman Desktop all recommended)
+* VS Code with [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
 1. Clone this repository
 2. Open in VS Code
