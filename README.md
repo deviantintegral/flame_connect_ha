@@ -205,6 +205,8 @@ logger:
   default: info
   logs:
     custom_components.flameconnect: debug
+    # Log the underlying API library INCLUDING tokens
+    # flameconnect: debug
 ```
 
 ## Contributing
