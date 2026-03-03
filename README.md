@@ -248,7 +248,7 @@ This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENS
 [commits-shield]: https://img.shields.io/github/commit-activity/y/deviantintegral/flame_connect_ha.svg?style=for-the-badge
 [commits]: https://github.com/deviantintegral/flame_connect_ha/commits/main
 [hacs]: https://github.com/hacs/integration
-[hacsbadge]: https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge
+[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
 [license-shield]: https://img.shields.io/github/license/deviantintegral/flame_connect_ha.svg?style=for-the-badge
 [maintenance-shield]: https://img.shields.io/badge/maintainer-%40deviantintegral-blue.svg?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/deviantintegral/flame_connect_ha.svg?style=for-the-badge
