@@ -19,6 +19,15 @@
       "matchDepNames": ["homeassistant"],
       "enabled": false,
       "description": "Home Assistant version should match the homeassistant key in hacs.json"
+    },
+    {
+      "matchDepNames": ["python", "mcr.microsoft.com/devcontainers/python"],
+      "groupName": "Python version",
+      "automerge": false,
+      "description": "Python version is manually managed to track Home Assistant requirements",
+      "prBodyNotes": [
+        "⚠️ **Do not automerge.** This project tracks the Home Assistant Python requirement, which is the previous minor version of Python. Verify the new version matches before merging."
+      ]
     }
   ]
 }
