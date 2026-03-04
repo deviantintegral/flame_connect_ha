@@ -12,6 +12,8 @@
       "datasourceTemplate": "pypi"
     }
   ],
+  "automerge": true,
+  "minimumReleaseAge": "3 days",
   "packageRules": [
     {
       "matchDepNames": ["homeassistant"],
