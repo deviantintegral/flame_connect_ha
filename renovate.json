@@ -20,6 +20,16 @@
       ],
       "depNameTemplate": "python",
       "datasourceTemplate": "python-version"
+    },
+    {
+      "customType": "regex",
+      "description": "Track Python version in CODESPACES.md prose",
+      "managerFilePatterns": ["/^docs/development/CODESPACES\\.md$/"],
+      "matchStrings": [
+        "Python (?<currentValue>[\\d.]+) environment"
+      ],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "python-version"
     }
   ],
   "automerge": true,
