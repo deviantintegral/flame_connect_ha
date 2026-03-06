@@ -30,6 +30,16 @@
       ],
       "depNameTemplate": "python",
       "datasourceTemplate": "python-version"
+    },
+    {
+      "customType": "regex",
+      "description": "Track Python version in workflow venv cache keys",
+      "managerFilePatterns": ["/^\\.github/workflows/.*\\.yml$/"],
+      "matchStrings": [
+        "ha-venv-.*-py(?<currentValue>\\d+\\.\\d+)-"
+      ],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "python-version"
     }
   ],
   "automerge": true,
