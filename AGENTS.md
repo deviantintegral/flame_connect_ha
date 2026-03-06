@@ -14,6 +14,11 @@ This is a Home Assistant custom integration that was generated from a blueprint 
 - **Library:** [flameconnect](https://pypi.org/project/flameconnect/) (v0.4.0) — Flame Connect cloud API client
 - **Auth:** Azure AD B2C via MSAL, credentials used once then only OAuth tokens stored
 
+**Domain naming rationale:** The domain is `flameconnect` (not `dimplex`) for three reasons:
+1. **HA convention**: Home Assistant uses the cloud service/product name, not the manufacturer name (e.g., HA core uses `melcloud` for Mitsubishi's MELCloud, not `mitsubishi`).
+2. **Multi-brand scope**: FlameConnect is the cloud API that controls Dimplex, Faber, and Real Flame fireplaces — naming it `dimplex` would be misleading for non-Dimplex users.
+3. **Conflict avoidance**: Other custom integrations already use `dimplex` as a domain (e.g., for Dimplex heat pumps).
+
 **Key directories:**
 
 - `custom_components/flameconnect/` - Main integration code
