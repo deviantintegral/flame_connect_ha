@@ -10,6 +10,26 @@
         "\"(?<depName>[a-zA-Z0-9_.-]+)==(?<currentValue>[^\"]+)\""
       ],
       "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "Track Python version in pyproject.toml requires-python",
+      "managerFilePatterns": ["/^pyproject\\.toml$/"],
+      "matchStrings": [
+        "requires-python\\s*=\\s*\">=(?<currentValue>[\\d.]+)\""
+      ],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "python-version"
+    },
+    {
+      "customType": "regex",
+      "description": "Track Python version in CODESPACES.md prose",
+      "managerFilePatterns": ["/^docs/development/CODESPACES\\.md$/"],
+      "matchStrings": [
+        "Python (?<currentValue>[\\d.]+) environment"
+      ],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "python-version"
     }
   ],
   "automerge": true,
