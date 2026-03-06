@@ -58,10 +58,10 @@ jobs:
         with:
           path: |
             .local/ha-venv
-          key: ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
+          key: ha-venv-${{ runner.os }}-py3.14-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: |
-            ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-
-            ha-venv-${{ runner.os }}-py314-
+            ha-venv-${{ runner.os }}-py3.14-ha${{ steps.ha_version.outputs.HA_VERSION }}-
+            ha-venv-${{ runner.os }}-py3.14-
 
       - name: Install dependencies
         run: script/setup/bootstrap
