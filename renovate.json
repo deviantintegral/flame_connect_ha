@@ -58,6 +58,11 @@
       "prBodyNotes": [
         "⚠️ **Do not automerge.** This project tracks the Home Assistant Python requirement, which is the previous minor version of Python. Verify the new version matches before merging."
       ]
+    },
+    {
+      "matchDepNames": ["flameconnect"],
+      "minimumReleaseAge": "0 days",
+      "description": "Immediately automerge flameconnect library updates without the default delay"
     }
   ]
 }
