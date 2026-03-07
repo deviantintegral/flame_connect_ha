@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0](https://github.com/deviantintegral/flame_connect_ha/compare/v0.1.1...v0.2.0) (2026-03-07)
+
+
+### Features
+
+* add Dimplex brand support ([#39](https://github.com/deviantintegral/flame_connect_ha/issues/39)) ([938c492](https://github.com/deviantintegral/flame_connect_ha/commit/938c4920a9dc151138ad5c3e1deb7e90f36d3ac6))
+
+
+### Bug Fixes
+
+* update CI venv cache keys and add Renovate tracking for Python version ([#45](https://github.com/deviantintegral/flame_connect_ha/issues/45)) ([74f6758](https://github.com/deviantintegral/flame_connect_ha/commit/74f6758c9e72e91fe1d52213504437604120138d))
+
+
+### Documentation
+
+* show how to log flameconnect ([e5afcd2](https://github.com/deviantintegral/flame_connect_ha/commit/e5afcd26d557f118ac2187333d1c0c011321758b))
+
 ## [0.1.1](https://github.com/deviantintegral/flame_connect_ha/compare/v0.1.0...v0.1.1) (2026-03-03)
 
 
