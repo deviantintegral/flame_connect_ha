@@ -13,7 +13,7 @@
     "flameconnect"
   ],
   "requirements": [
-    "flameconnect==0.5.1"
+    "flameconnect==0.5.2"
   ],
   "version": "0.1.1"
 }
