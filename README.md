@@ -1,4 +1,4 @@
-# FlameConnect
+# 🔥🏠 Flame Connect for Home Assistant
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
@@ -59,7 +59,7 @@ Or manually:
 
 1. Go to **Settings** > **Devices & Services**
 2. Click **"+ Add Integration"**
-3. Search for "FlameConnect"
+3. Search for "Flame Connect"
 4. Enter your Flame Connect email and password
 5. Click Submit
 

@@ -2,16 +2,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "FlameConnect Login",
-        "description": "Enter your FlameConnect account credentials. Your email and password are used once for authentication and are not stored.",
+        "title": "Flame Connect Login",
+        "description": "Enter your Flame Connect account credentials. Your email and password are used once for authentication and are not stored.",
         "data": {
           "email": "Email",
           "password": "Password"
         }
       },
       "reauth_confirm": {
-        "title": "Re-authenticate FlameConnect",
-        "description": "Your session has expired. Please re-enter your credentials.",
+        "title": "Re-authenticate Flame Connect",
         "data": {
           "email": "Email",
           "password": "Password"
@@ -136,11 +135,11 @@
   },
   "issues": {
     "auth_expired": {
-      "title": "FlameConnect authentication expired",
+      "title": "Flame Connect authentication expired",
       "fix_flow": {
         "step": {
           "init": {
-            "title": "Re-authenticate FlameConnect",
+            "title": "Re-authenticate Flame Connect",
             "description": "Click submit to start the re-authentication process."
           }
         }
