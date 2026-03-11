@@ -24,6 +24,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
+# ------------------------------------------------------------------
+# _async_setup: fire filtering
+# ------------------------------------------------------------------
+
 
 async def test_async_setup_discovers_fires(
     hass: HomeAssistant,
@@ -38,6 +42,76 @@ async def test_async_setup_discovers_fires(
 
     assert coordinator.fires == [mock_fire]
     mock_flameconnect_client.get_fires.assert_awaited_once()
+
+
+async def test_async_setup_filters_none_fires(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire: Fire,
+) -> None:
+    """Test that None entries in the fire list are filtered out."""
+    config_entry.add_to_hass(hass)
+    mock_flameconnect_client.get_fires.return_value = [None, mock_fire, None]
+
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+    await coordinator._async_setup()  # noqa: SLF001
+
+    assert coordinator.fires == [mock_fire]
+
+
+async def test_async_setup_filters_fires_with_empty_id(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire: Fire,
+) -> None:
+    """Test that fires with empty or missing fire_id are filtered out."""
+    config_entry.add_to_hass(hass)
+    empty_id_fire = dataclasses.replace(mock_fire, fire_id="")
+    mock_flameconnect_client.get_fires.return_value = [empty_id_fire, mock_fire]
+
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+    await coordinator._async_setup()  # noqa: SLF001
+
+    assert coordinator.fires == [mock_fire]
+
+
+async def test_async_setup_raises_when_no_valid_fires(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+) -> None:
+    """Test that UpdateFailed is raised when all fires are invalid."""
+    config_entry.add_to_hass(hass)
+    mock_flameconnect_client.get_fires.return_value = [None]
+
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+
+    with pytest.raises(UpdateFailed, match="No fires with valid fire IDs found"):
+        await coordinator._async_setup()  # noqa: SLF001
+
+
+async def test_async_setup_raises_when_all_fires_have_empty_ids(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire: Fire,
+) -> None:
+    """Test that UpdateFailed is raised when all fires have empty IDs."""
+    config_entry.add_to_hass(hass)
+    empty_id_fire = dataclasses.replace(mock_fire, fire_id="")
+    mock_flameconnect_client.get_fires.return_value = [empty_id_fire]
+
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+
+    with pytest.raises(UpdateFailed, match="No fires with valid fire IDs found"):
+        await coordinator._async_setup()  # noqa: SLF001
+
+
+# ------------------------------------------------------------------
+# _async_update_data: overview handling
+# ------------------------------------------------------------------
 
 
 async def test_async_update_data_success(
@@ -107,6 +181,44 @@ async def test_async_update_data_flameconnect_error(
     coordinator.fires = [mock_fire]
 
     with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()  # noqa: SLF001
+
+
+async def test_async_update_data_skips_none_overview(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire: Fire,
+    mock_fire_overview: FireOverview,
+) -> None:
+    """Test that a None overview is skipped without crashing."""
+    config_entry.add_to_hass(hass)
+    second_fire = dataclasses.replace(mock_fire, fire_id="def456", friendly_name="Bedroom")
+    mock_flameconnect_client.get_fire_overview.side_effect = [None, mock_fire_overview]
+
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+    coordinator.fires = [mock_fire, second_fire]
+
+    result = await coordinator._async_update_data()  # noqa: SLF001
+
+    assert "abc123" not in result
+    assert result["def456"] == mock_fire_overview
+
+
+async def test_async_update_data_all_overviews_none(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire: Fire,
+) -> None:
+    """Test that UpdateFailed is raised when all overviews are None."""
+    config_entry.add_to_hass(hass)
+    mock_flameconnect_client.get_fire_overview.return_value = None
+
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+    coordinator.fires = [mock_fire]
+
+    with pytest.raises(UpdateFailed, match="All fire overviews returned empty data"):
         await coordinator._async_update_data()  # noqa: SLF001
 
 

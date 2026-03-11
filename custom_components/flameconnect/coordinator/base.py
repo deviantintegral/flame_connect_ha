@@ -88,7 +88,16 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
 
     async def _async_setup(self) -> None:
         """Discover all fires during first refresh."""
-        self.fires = await self.client.get_fires()
+        all_fires = await self.client.get_fires()
+        self.fires = [fire for fire in all_fires if fire is not None and fire.fire_id]
+        skipped = len(all_fires) - len(self.fires)
+        if skipped:
+            LOGGER.warning(
+                "Skipped %d fire(s) with missing or empty fire ID",
+                skipped,
+            )
+        if not self.fires:
+            raise UpdateFailed("No fires with valid fire IDs found in account")
         for fire in self.fires:
             enabled_features = [f.name for f in dataclasses.fields(fire.features) if getattr(fire.features, f.name)]
             LOGGER.debug(
@@ -106,7 +115,15 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         try:
             result: dict[str, FireOverview] = {}
             for fire in self.fires:
-                result[fire.fire_id] = await self.client.get_fire_overview(fire.fire_id)
+                overview = await self.client.get_fire_overview(fire.fire_id)
+                if overview is None:
+                    LOGGER.warning(
+                        "Received empty overview for fire %s (%s), skipping",
+                        fire.friendly_name,
+                        fire.fire_id,
+                    )
+                    continue
+                result[fire.fire_id] = overview
         except AuthenticationError as err:
             ir.async_create_issue(
                 self.hass,
@@ -120,6 +137,8 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         except (ApiError, FlameConnectError) as err:
             raise UpdateFailed(str(err)) from err
         else:
+            if not result:
+                raise UpdateFailed("All fire overviews returned empty data")
             return result
 
     # ------------------------------------------------------------------
