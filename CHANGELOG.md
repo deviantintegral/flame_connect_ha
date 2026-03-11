@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/deviantintegral/flame_connect_ha/compare/v0.2.0...v0.2.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* handle None fires and empty overviews from API ([#55](https://github.com/deviantintegral/flame_connect_ha/issues/55)) ([#56](https://github.com/deviantintegral/flame_connect_ha/issues/56)) ([1fdcaa6](https://github.com/deviantintegral/flame_connect_ha/commit/1fdcaa6b7665b95c2655326852c52556f9d7fe17))
+* rename "FlameConnect" to "Flame Connect" in all user-facing text ([#49](https://github.com/deviantintegral/flame_connect_ha/issues/49)) ([7805622](https://github.com/deviantintegral/flame_connect_ha/commit/780562216c885e44a21798bdd7abbf86a56f6416))
+
 ## [0.2.0](https://github.com/deviantintegral/flame_connect_ha/compare/v0.1.1...v0.2.0) (2026-03-07)
 
 
