@@ -63,6 +63,10 @@
       "matchDepNames": ["flameconnect"],
       "minimumReleaseAge": "0 days",
       "description": "Immediately automerge flameconnect library updates without the default delay"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "automerge": false
     }
   ]
 }
