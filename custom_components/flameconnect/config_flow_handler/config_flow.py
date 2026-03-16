@@ -8,17 +8,24 @@ updates the stored token cache.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from slugify import slugify
 
-from custom_components.flameconnect.api.token import CONF_TOKEN_CACHE
+from custom_components.flameconnect.api.token import CONF_TOKEN_CACHE, build_msal_app
 from custom_components.flameconnect.config_flow_handler.schemas import STEP_USER_DATA_SCHEMA
-from custom_components.flameconnect.config_flow_handler.validators import validate_credentials
+from custom_components.flameconnect.config_flow_handler.validators import (
+    NoWifiFireplacesError,
+    validate_credentials,
+    validate_fireplaces,
+)
 from custom_components.flameconnect.const import DOMAIN, LOGGER
-from flameconnect import ApiError, AuthenticationError  # type: ignore[attr-defined]
+from flameconnect import ApiError, AuthenticationError, FlameConnectClient, TokenAuth  # type: ignore[attr-defined]
+from flameconnect.const import SCOPES  # type: ignore[attr-defined]
 from homeassistant import config_entries
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 
 class FlameConnectConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -58,20 +65,58 @@ class FlameConnectConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.exception("Unexpected error during config flow")
                 errors["base"] = "unknown"
             else:
-                email = user_input["email"]
-                await self.async_set_unique_id(slugify(email))
-                self._abort_if_unique_id_configured()
+                try:
+                    await self._validate_fireplaces(token_cache)
+                except NoWifiFireplacesError:
+                    return self.async_abort(reason="no_wifi_fireplaces")
+                except (ApiError, OSError):
+                    LOGGER.warning("Connection error while checking fireplaces")
+                    errors["base"] = "cannot_connect"
+                else:
+                    email = user_input["email"]
+                    await self.async_set_unique_id(slugify(email))
+                    self._abort_if_unique_id_configured()
 
-                return self.async_create_entry(
-                    title=email,
-                    data={CONF_TOKEN_CACHE: token_cache},
-                )
+                    return self.async_create_entry(
+                        title=email,
+                        data={CONF_TOKEN_CACHE: token_cache},
+                    )
 
         return self.async_show_form(
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
         )
+
+    async def _validate_fireplaces(self, token_cache: str) -> None:
+        """Check that the account has WiFi-connected fireplaces.
+
+        Creates a temporary client using the token cache from authentication
+        and verifies that at least one fireplace returns a valid WiFi overview.
+
+        Raises:
+            NoWifiFireplacesError: If no WiFi fireplaces are found.
+            ApiError: If the API is unreachable.
+            OSError: If a network error occurs.
+
+        """
+
+        async def _get_token() -> str:
+            app, _cache = await asyncio.to_thread(build_msal_app, token_cache)
+            accounts: list[dict[str, Any]] = app.get_accounts()
+            result: dict[str, Any] | None = await asyncio.to_thread(
+                app.acquire_token_silent, SCOPES, account=accounts[0]
+            )
+            if result is None or "error" in result:
+                raise AuthenticationError("Token acquisition failed")
+            access_token: str = result["access_token"]
+            return access_token
+
+        client = FlameConnectClient(
+            auth=TokenAuth(_get_token),
+            session=async_get_clientsession(self.hass),
+        )
+        await validate_fireplaces(client)
 
     async def async_step_reauth(
         self,

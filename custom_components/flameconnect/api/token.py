@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 CONF_TOKEN_CACHE = "token_cache"
 
 
-def _build_msal_app(
+def build_msal_app(
     cache_data: str,
 ) -> tuple[msal.PublicClientApplication, msal.SerializableTokenCache]:
     """Build an MSAL PublicClientApplication with a deserialized token cache.
@@ -76,7 +76,7 @@ def create_token_provider(
         cache_data: str = entry.data[CONF_TOKEN_CACHE]
 
         # Build the MSAL app with deserialized cache (blocking I/O).
-        app, cache = await asyncio.to_thread(_build_msal_app, cache_data)
+        app, cache = await asyncio.to_thread(build_msal_app, cache_data)
 
         # Get accounts from the cache.
         accounts: list[dict[str, Any]] = app.get_accounts()
