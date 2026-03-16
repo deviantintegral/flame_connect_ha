@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from flameconnect import ApiError, AuthenticationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.flameconnect.config_flow_handler.validators.fireplaces import NoWifiFireplacesError
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -22,6 +23,11 @@ CREDENTIALS_MODULE = "custom_components.flameconnect.config_flow_handler.validat
 
 # Patch validate_credentials where it is looked up by config_flow.py
 VALIDATE_CREDENTIALS_PATCH = "custom_components.flameconnect.config_flow_handler.config_flow.validate_credentials"
+
+# Patch _validate_fireplaces on the config flow handler class
+VALIDATE_FIREPLACES_PATCH = (
+    "custom_components.flameconnect.config_flow_handler.config_flow.FlameConnectConfigFlowHandler._validate_fireplaces"
+)
 
 
 def _make_credential_mocks():
@@ -67,6 +73,7 @@ async def test_user_step_happy_path(hass: HomeAssistant, mock_setup_entry: Magic
             f"{CREDENTIALS_MODULE}.asyncio.to_thread",
             side_effect=lambda fn, *a, **kw: fn(*a, **kw),
         ),
+        patch(VALIDATE_FIREPLACES_PATCH, new_callable=AsyncMock),
     ):
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
         assert result["type"] is FlowResultType.FORM
@@ -183,3 +190,68 @@ async def test_reauth_step_invalid_auth(hass: HomeAssistant, config_entry: MockC
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "invalid_auth"}
+
+
+# ------------------------------------------------------------------
+# Fireplace validation during user step
+# ------------------------------------------------------------------
+
+
+async def test_user_step_no_wifi_fireplaces_aborts(hass: HomeAssistant) -> None:
+    """Test that setup aborts when no WiFi-connected fireplaces are found."""
+    with (
+        patch(VALIDATE_CREDENTIALS_PATCH, return_value="fake-cache"),
+        patch(
+            VALIDATE_FIREPLACES_PATCH,
+            new_callable=AsyncMock,
+            side_effect=NoWifiFireplacesError,
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input=VALID_USER_INPUT,
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "no_wifi_fireplaces"
+
+
+async def test_user_step_fireplace_check_api_error(hass: HomeAssistant) -> None:
+    """Test that a connection error during fireplace check shows cannot_connect."""
+    with (
+        patch(VALIDATE_CREDENTIALS_PATCH, return_value="fake-cache"),
+        patch(
+            VALIDATE_FIREPLACES_PATCH,
+            new_callable=AsyncMock,
+            side_effect=ApiError(500, "server error"),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input=VALID_USER_INPUT,
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_user_step_fireplace_check_os_error(hass: HomeAssistant) -> None:
+    """Test that an OSError during fireplace check shows cannot_connect."""
+    with (
+        patch(VALIDATE_CREDENTIALS_PATCH, return_value="fake-cache"),
+        patch(
+            VALIDATE_FIREPLACES_PATCH,
+            new_callable=AsyncMock,
+            side_effect=OSError("network down"),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input=VALID_USER_INPUT,
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
