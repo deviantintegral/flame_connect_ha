@@ -115,7 +115,15 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         try:
             result: dict[str, FireOverview] = {}
             for fire in self.fires:
-                overview = await self.client.get_fire_overview(fire.fire_id)
+                try:
+                    overview = await self.client.get_fire_overview(fire.fire_id)
+                except (TypeError, KeyError):
+                    LOGGER.debug(
+                        "Fire %s (%s) has no WiFi overview, skipping",
+                        fire.friendly_name,
+                        fire.fire_id,
+                    )
+                    continue
                 if overview is None:
                     LOGGER.warning(
                         "Received empty overview for fire %s (%s), skipping",

@@ -184,6 +184,58 @@ async def test_async_update_data_flameconnect_error(
         await coordinator._async_update_data()  # noqa: SLF001
 
 
+async def test_async_update_data_skips_type_error_overview(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire: Fire,
+    mock_fire_overview: FireOverview,
+) -> None:
+    """Test that a TypeError from get_fire_overview is caught and the fire is skipped.
+
+    This happens when WifiFireOverview is null in the API response, causing
+    the library to crash with TypeError when accessing its fields.
+    """
+    config_entry.add_to_hass(hass)
+    second_fire = dataclasses.replace(mock_fire, fire_id="def456", friendly_name="Bedroom")
+    mock_flameconnect_client.get_fire_overview.side_effect = [
+        TypeError("'NoneType' object is not subscriptable"),
+        mock_fire_overview,
+    ]
+
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+    coordinator.fires = [mock_fire, second_fire]
+
+    result = await coordinator._async_update_data()  # noqa: SLF001
+
+    assert "abc123" not in result
+    assert result["def456"] == mock_fire_overview
+
+
+async def test_async_update_data_skips_key_error_overview(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire: Fire,
+    mock_fire_overview: FireOverview,
+) -> None:
+    """Test that a KeyError from get_fire_overview is caught and the fire is skipped."""
+    config_entry.add_to_hass(hass)
+    second_fire = dataclasses.replace(mock_fire, fire_id="def456", friendly_name="Bedroom")
+    mock_flameconnect_client.get_fire_overview.side_effect = [
+        KeyError("WifiFireOverview"),
+        mock_fire_overview,
+    ]
+
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+    coordinator.fires = [mock_fire, second_fire]
+
+    result = await coordinator._async_update_data()  # noqa: SLF001
+
+    assert "abc123" not in result
+    assert result["def456"] == mock_fire_overview
+
+
 async def test_async_update_data_skips_none_overview(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,

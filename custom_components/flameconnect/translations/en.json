@@ -24,6 +24,7 @@
     },
     "abort": {
       "already_configured": "This account is already configured.",
+      "no_wifi_fireplaces": "No WiFi-connected fireplaces were found on this account. Your fireplace may be controlled over Bluetooth and is not compatible with this integration.",
       "reauth_successful": "Re-authentication successful."
     }
   },
