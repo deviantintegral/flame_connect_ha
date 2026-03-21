@@ -7,7 +7,7 @@
 
 [project]
 name = "flameconnect"
-version = "0.2.1"   # Version is managed by release-please (also updates manifest.json)
+version = "0.2.2"   # Version is managed by release-please (also updates manifest.json)
 requires-python = ">=3.14.3"
 
 [tool.setuptools]
