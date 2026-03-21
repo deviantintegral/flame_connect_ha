@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/deviantintegral/flame_connect_ha/compare/v0.2.1...v0.2.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* abort setup when no WiFi-connected fireplaces found ([#60](https://github.com/deviantintegral/flame_connect_ha/issues/60)) ([89586db](https://github.com/deviantintegral/flame_connect_ha/commit/89586db8eef0bc4d2996f1c1b4205f076d5d6a64))
+
 ## [0.2.1](https://github.com/deviantintegral/flame_connect_ha/compare/v0.2.0...v0.2.1) (2026-03-11)
 
 
