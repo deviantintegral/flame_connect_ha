@@ -131,13 +131,43 @@ else
     log_info "No runtime dependencies defined (this is normal for blueprints)"
 fi
 
-HA_VERSION="${HA_VERSION:-$(grep '"homeassistant"' hacs.json | head -1 | sed 's/.*"homeassistant"\s*:\s*"\([^"]*\)".*/\1/')}"
+# Determine which Home Assistant core version to target for the environment.
+#
+# By default we let the test harness drive it. Each
+# pytest-homeassistant-custom-component release (pinned in requirements_test.txt
+# and installed above) is locked to one exact Home Assistant version, and its
+# fixtures call core internals that must match that version. So we read the
+# version the harness just pulled in rather than pinning our own.
+#
+# hacs.json's "homeassistant" is a *minimum* supported version, not an exact
+# pin. Installing it as an exact version here previously downgraded core out
+# from under a newer harness, breaking the test run.
+#
+# Set HA_VERSION explicitly to override (e.g. to target a specific core version
+# in a matrix build); the installed harness must be compatible with it.
+if [[ -n "${HA_VERSION:-}" ]]; then
+    PIN_HA_CORE=true
+    log_info "Targeting explicitly requested Home Assistant ${HA_VERSION}"
+else
+    PIN_HA_CORE=false
+    HA_VERSION="$(python -c 'from homeassistant.const import __version__; print(__version__)' 2>/dev/null || true)"
+    if [[ -n "$HA_VERSION" ]]; then
+        log_info "Targeting Home Assistant ${HA_VERSION} (pulled in by the test harness)"
+    fi
+fi
 
 if [[ -z "$HA_VERSION" ]]; then
-    log_error "HA_VERSION not set and could not be determined from hacs.json"
+    log_error "Could not determine the Home Assistant version: no HA_VERSION override set and homeassistant is not installed"
     exit 1
 fi
 HA_CORE_BASE_URL="https://raw.githubusercontent.com/home-assistant/core/${HA_VERSION}"
+
+# Only install core explicitly when an override is requested. Otherwise the
+# harness already installed the matching version and re-pinning would downgrade.
+if [[ "$PIN_HA_CORE" == true ]]; then
+    log_header "Installing Home Assistant ${HA_VERSION} core"
+    uv pip install "homeassistant==${HA_VERSION}"
+fi
 
 log_header "Installing Home Assistant ${HA_VERSION} runtime dependencies"
 mkdir -p "/tmp/homeassistant"
@@ -150,9 +180,6 @@ log_header "Installing Home Assistant ${HA_VERSION} test dependencies"
 curl -fsSL "${HA_CORE_BASE_URL}/requirements_test_pre_commit.txt" -o "/tmp/requirements_test_pre_commit.txt"  # required by requirements_test.txt
 curl -fsSL "${HA_CORE_BASE_URL}/requirements_test.txt" -o "/tmp/requirements_test.txt"
 uv pip install --requirement "/tmp/requirements_test.txt"
-
-log_header "Installing Home Assistant ${HA_VERSION} core"
-uv pip install "homeassistant==${HA_VERSION}"
 
 set +e
 rm -rf /tmp/requirements*.txt /tmp/homeassistant/ || log_warning "Failed to clean up temporary files"
