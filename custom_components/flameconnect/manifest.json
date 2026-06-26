@@ -5,10 +5,10 @@
     "@deviantintegral"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/deviantintegral/flameconnect_ha",
+  "documentation": "https://github.com/deviantintegral/flame_connect_ha",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/deviantintegral/flameconnect_ha/issues",
+  "issue_tracker": "https://github.com/deviantintegral/flame_connect_ha/issues",
   "loggers": [
     "flameconnect"
   ],
