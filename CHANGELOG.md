@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/deviantintegral/flame_connect_ha/compare/v0.2.2...v0.2.3) (2026-06-26)
+
+
+### Bug Fixes
+
+* **docs:** stale links for docs and issues ([#105](https://github.com/deviantintegral/flame_connect_ha/issues/105)) ([a751082](https://github.com/deviantintegral/flame_connect_ha/commit/a75108276918e7cede5934ac87ab951b07df9f4d))
+
 ## [0.2.2](https://github.com/deviantintegral/flame_connect_ha/compare/v0.2.1...v0.2.2) (2026-03-21)
 
 
