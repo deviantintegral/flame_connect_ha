@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from custom_components.flameconnect.const import LOGGER
 from custom_components.flameconnect.entity import FlameConnectEntity
-from flameconnect import HeatControl, HeatMode, HeatModeParam, HeatParam, HeatStatus, TempUnit, TempUnitParam
+from flameconnect import HeatControl, HeatMode, HeatModeParam, HeatParam, HeatStatus
 from homeassistant.components.climate import ClimateEntity, ClimateEntityDescription
 from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode
 from homeassistant.const import UnitOfTemperature
@@ -104,15 +104,17 @@ class FlameConnectClimate(FlameConnectEntity, ClimateEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        """Return the target temperature in Celsius."""
+        """Return the target temperature in Celsius.
+
+        The device always stores the setpoint in Celsius on the wire; the
+        ``TempUnit`` parameter is only a display preference for the
+        fireplace's own UI and does not affect the stored value. Home
+        Assistant converts to the user's preferred unit for display.
+        """
         heat = self._get_param(HeatParam)
         if heat is None:
             return None
-        temp = heat.setpoint_temperature
-        temp_unit = self._get_param(TempUnitParam)
-        if temp_unit is not None and temp_unit.unit == TempUnit.FAHRENHEIT:
-            temp = (temp - 32) * 5 / 9
-        return temp
+        return heat.setpoint_temperature
 
     @property
     def current_temperature(self) -> float | None:
@@ -137,11 +139,13 @@ class FlameConnectClimate(FlameConnectEntity, ClimateEntity):
             await self.coordinator.async_write_fields(self._fire_id, HeatParam, heat_mode=mode)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set the target temperature."""
+        """Set the target temperature.
+
+        Home Assistant provides the value in Celsius (the entity's unit),
+        which is exactly what the device stores on the wire, so it is
+        written through unchanged regardless of the device's display unit.
+        """
         temperature: float | None = kwargs.get("temperature")
         if temperature is None:
             return
-        temp_unit = self._get_param(TempUnitParam)
-        if temp_unit is not None and temp_unit.unit == TempUnit.FAHRENHEIT:
-            temperature = temperature * 9 / 5 + 32
         await self.coordinator.async_write_fields(self._fire_id, HeatParam, setpoint_temperature=temperature)
