@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/deviantintegral/flame_connect_ha/compare/v0.2.3...v0.3.0) (2026-07-03)
+
+
+### Features
+
+* **release-please:** include commit authors in release notes ([9b97691](https://github.com/deviantintegral/flame_connect_ha/commit/9b97691952242d1830b790f7f5512f6ab4e27a7c))
+
+
+### Bug Fixes
+
+* **climate:** keep setpoint in Celsius regardless of device display unit ([43c2b99](https://github.com/deviantintegral/flame_connect_ha/commit/43c2b99d3c67a075d6f4292c0591d52edb81e659))
+* **release-please:** move config to root level ([fa838fc](https://github.com/deviantintegral/flame_connect_ha/commit/fa838fcc88fa577d3a9cab5ccb2c4095c9a1a368))
+
 ## [0.2.3](https://github.com/deviantintegral/flame_connect_ha/compare/v0.2.2...v0.2.3) (2026-06-26)
 
 
