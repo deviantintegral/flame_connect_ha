@@ -1,8 +1,8 @@
 {
+  "include-commit-authors": true,
   "packages": {
     ".": {
       "release-type": "python",
-      "include-commit-authors": true,
       "extra-files": [
         {
           "type": "json",
