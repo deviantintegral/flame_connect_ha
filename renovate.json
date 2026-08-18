@@ -22,30 +22,14 @@
       ],
       "depNameTemplate": "python",
       "datasourceTemplate": "python-version"
-    },
-    {
-      "customType": "regex",
-      "description": "Track Python version in CODESPACES.md prose",
-      "managerFilePatterns": ["/^docs/development/CODESPACES\\.md$/"],
-      "matchStrings": [
-        "Python (?<currentValue>[\\d.]+) environment"
-      ],
-      "depNameTemplate": "python",
-      "datasourceTemplate": "python-version"
-    },
-    {
-      "customType": "regex",
-      "description": "Track Python version in workflow venv cache keys",
-      "managerFilePatterns": ["/^\\.github/workflows/.*\\.yml$/"],
-      "matchStrings": [
-        "ha-venv-.*-py(?<currentValue>\\d+\\.\\d+)-"
-      ],
-      "depNameTemplate": "python",
-      "datasourceTemplate": "python-version"
     }
   ],
   "automerge": true,
   "minimumReleaseAge": "3 days",
+  "pre-commit": {
+    "enabled": true,
+    "description": "Renovate's pre-commit manager is disabled by default, so .pre-commit-config.yaml revs were never updated and drifted behind the equivalent pins in requirements_dev.txt"
+  },
   "packageRules": [
     {
       "matchDepNames": ["homeassistant"],
@@ -53,18 +37,23 @@
       "description": "Home Assistant version should match the homeassistant key in hacs.json"
     },
     {
-      "matchDepNames": ["python", "mcr.microsoft.com/devcontainers/python"],
+      "matchDepNames": ["python"],
       "groupName": "Python version",
       "automerge": false,
       "description": "Python version is manually managed to track Home Assistant requirements",
       "prBodyNotes": [
-        "⚠️ **Do not automerge.** This project tracks the Home Assistant Python requirement, which is the previous minor version of Python. Verify the new version matches before merging."
+        "Do not automerge. This project tracks the Home Assistant Python requirement, which is the previous minor version of Python. Verify the new version matches before merging."
       ]
     },
     {
-      "matchDepNames": ["flameconnect"],
-      "minimumReleaseAge": "0 days",
-      "description": "Immediately automerge flameconnect library updates without the default delay"
+      "matchPackageNames": ["ruff", "pre-commit", "codespell"],
+      "groupName": "dev dependencies",
+      "description": "Group developer tooling updates into a single PR"
+    },
+    {
+      "matchManagers": ["pre-commit"],
+      "groupName": "dev dependencies",
+      "description": "Hook revs are developer tooling. Sharing the group above keeps the ruff== pin in requirements_dev.txt and the ruff-pre-commit rev in one PR, so the two cannot drift apart"
     },
     {
       "description": "Tagged action releases: cooldown, then automerge",
@@ -75,11 +64,11 @@
       "automergeType": "pr"
     },
     {
-      "description": "Major action bumps: cooldown, manual review",
+      "description": "Major action bumps: cooldown, then automerge",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["major"],
       "minimumReleaseAge": "3 days",
-      "automerge": false
+      "automerge": true
     },
     {
       "description": "Pure digest moves: no timestamp available, always review",
