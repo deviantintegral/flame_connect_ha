@@ -124,7 +124,7 @@ Evaluated against the [Home Assistant Integration Quality Scale](https://www.hom
 |------|-------------|--------|
 | action-setup | Service actions registered in `async_setup` | N/A |
 | appropriate-polling | Polling interval is suitable | :white_check_mark: |
-| brands | Branding assets provided | :x: |
+| brands | Branding assets provided | :white_check_mark: |
 | common-modules | Common patterns in shared modules | :white_check_mark: |
 | config-flow-test-coverage | Full test coverage for config flow | :x: |
 | config-flow | UI-based setup | :white_check_mark: |
