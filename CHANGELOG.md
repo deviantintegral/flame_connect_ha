@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/deviantintegral/flame_connect_ha/compare/v0.3.0...v0.3.1) (2026-09-05)
+
+
+### Documentation
+
+* mark as default in HACS ([9e6da98](https://github.com/deviantintegral/flame_connect_ha/commit/9e6da988dccae1b5c8755e8b24a0dd0297396522))
+* mark brands as implemented ([d4d552f](https://github.com/deviantintegral/flame_connect_ha/commit/d4d552f2ec3859c759ac9a7fef57c757dfcd799d))
+
 ## [0.3.0](https://github.com/deviantintegral/flame_connect_ha/compare/v0.2.3...v0.3.0) (2026-07-03)
 
 
