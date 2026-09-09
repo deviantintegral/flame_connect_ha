@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/deviantintegral/flame_connect_ha/compare/v0.3.1...v0.3.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* recover from a failed coordinator refresh instead of wedging ([#159](https://github.com/deviantintegral/flame_connect_ha/issues/159)) ([b164fc9](https://github.com/deviantintegral/flame_connect_ha/commit/b164fc97ee34786ae87dad7f848dbc64290e0c5d))
+
 ## [0.3.1](https://github.com/deviantintegral/flame_connect_ha/compare/v0.3.0...v0.3.1) (2026-09-09)
 
 
