@@ -53,6 +53,17 @@ class FlameConnectRefreshButton(ButtonEntity, FlameConnectEntity):
         """Initialise the refresh button."""
         super().__init__(coordinator, description, fire)
 
+    @property
+    def available(self) -> bool:
+        """Return True always, regardless of coordinator health.
+
+        This button is the only in-band way to recover a coordinator that
+        has stopped updating.  Inheriting coordinator availability would
+        disable it exactly when it is needed, because Home Assistant
+        refuses service calls to unavailable entities.
+        """
+        return True
+
     async def async_press(self) -> None:
         """Handle the button press to refresh coordinator data."""
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()
