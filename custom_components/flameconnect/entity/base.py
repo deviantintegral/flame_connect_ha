@@ -45,7 +45,7 @@ class FlameConnectEntity(CoordinatorEntity["FlameConnectDataUpdateCoordinator"])
     @property
     def available(self) -> bool:
         """Return True if the fireplace is present in coordinator data."""
-        return super().available and self._fire_id in self.coordinator.data
+        return super().available and self._fire_id in (self.coordinator.data or {})
 
     @property
     def device_info(self) -> DeviceInfo:

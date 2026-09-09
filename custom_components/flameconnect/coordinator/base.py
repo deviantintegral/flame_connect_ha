@@ -2,7 +2,9 @@
 
 Fetches fire discovery data once at setup, then polls per-fire overview
 data on a 24-hour interval with random jitter to avoid thundering-herd
-effects across multiple installations.
+effects across multiple installations.  While the last refresh failed the
+interval drops to :data:`RETRY_INTERVAL` so a transient error cannot take
+the fireplace out of service until the next daily poll.
 
 All entity writes are routed through this coordinator to prevent races
 (per-fire ``asyncio.Lock``) and to debounce rapid slider changes.
@@ -30,7 +32,7 @@ from flameconnect import (
     ModeParam,
 )
 from homeassistant.core import callback
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -39,6 +41,21 @@ if TYPE_CHECKING:
     from custom_components.flameconnect.data import FlameConnectConfigEntry
     from flameconnect import Fire, Parameter
     from homeassistant.core import HomeAssistant
+
+# Steady-state polling interval.  Overview data changes rarely and the
+# fireplace pushes nothing, so a long interval keeps cloud load low.
+POLL_INTERVAL = timedelta(hours=24)
+
+# Upper bound of the random jitter added to POLL_INTERVAL, spreading the
+# daily poll of every installation across an hour.
+MAX_JITTER_MINUTES = 60
+
+# Interval used while the last refresh failed.  DataUpdateCoordinator has
+# no backoff of its own, it simply re-arms ``update_interval``, so without
+# this a single transient failure would leave every entity unavailable
+# (and every service call to it silently dropped) until the next daily
+# poll.
+RETRY_INTERVAL = timedelta(minutes=5)
 
 
 class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOverview]]):
@@ -64,13 +81,13 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         entry: FlameConnectConfigEntry,
     ) -> None:
         """Initialise the coordinator with a 24 h + jitter update interval."""
-        jitter = timedelta(minutes=randint(0, 60))
+        self._poll_interval = POLL_INTERVAL + timedelta(minutes=randint(0, MAX_JITTER_MINUTES))
         super().__init__(
             hass,
             LOGGER,
             config_entry=entry,
             name=DOMAIN,
-            update_interval=timedelta(hours=24) + jitter,
+            update_interval=self._poll_interval,
         )
         self.client = client
 
@@ -112,16 +129,26 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
 
     async def _async_update_data(self) -> dict[str, FireOverview]:
         """Fetch overview data for every discovered fire."""
+        skip_reason: Exception | None = None
         try:
             result: dict[str, FireOverview] = {}
             for fire in self.fires:
                 try:
                     overview = await self.client.get_fire_overview(fire.fire_id)
-                except (TypeError, KeyError):
+                except (TypeError, KeyError) as err:
+                    # The library raises these when ``WifiFireOverview`` is
+                    # missing or null, which is how a Bluetooth-only fire
+                    # presents.  The same exception types would also be
+                    # raised by a cloud response-shape change or a bug in
+                    # the decode path, so keep the exception: it is chained
+                    # onto the UpdateFailed below and would otherwise be
+                    # reported as a benign "no WiFi overview".
+                    skip_reason = err
                     LOGGER.debug(
                         "Fire %s (%s) has no WiFi overview, skipping",
                         fire.friendly_name,
                         fire.fire_id,
+                        exc_info=True,
                     )
                     continue
                 if overview is None:
@@ -146,8 +173,75 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
             raise UpdateFailed(str(err)) from err
         else:
             if not result:
-                raise UpdateFailed("All fire overviews returned empty data")
+                message = "All fire overviews returned empty data"
+                if skip_reason is not None:
+                    message = f"{message} ({type(skip_reason).__name__}: {skip_reason})"
+                raise UpdateFailed(message) from skip_reason
             return result
+
+    # ------------------------------------------------------------------
+    # Refresh scheduling and failure visibility
+    # ------------------------------------------------------------------
+
+    @callback
+    def _schedule_refresh(self) -> None:
+        """Schedule the next refresh, retrying quickly after a failure.
+
+        ``DataUpdateCoordinator`` implements no retry or backoff of its
+        own: after a failed update it simply re-arms ``update_interval``.
+        With the steady-state 24 h interval that means one transient
+        failure removes the fireplace from service for a day, because
+        every entity reports ``available is False`` while
+        ``last_update_success`` is False and Home Assistant drops service
+        calls to unavailable entities.  Poll on the short
+        :data:`RETRY_INTERVAL` until a refresh succeeds again.
+        """
+        self.update_interval = self._poll_interval if self.last_update_success else RETRY_INTERVAL
+        super()._schedule_refresh()
+
+    async def _async_refresh(
+        self,
+        log_failures: bool = True,
+        raise_on_auth_failed: bool = False,
+        scheduled: bool = False,
+        raise_on_entry_error: bool = False,
+    ) -> None:
+        """Refresh data, keeping a cancelled refresh from going unnoticed.
+
+        ``DataUpdateCoordinator`` treats ``asyncio.CancelledError`` as a
+        failed update but logs nothing at all for it, and re-raises the
+        cancellation before it reaches ``async_update_listeners``.  The
+        result is entities that report ``available is False`` — so every
+        service call to them is silently dropped — while the state machine
+        keeps serving the values from the last successful poll, which makes
+        the fireplace look healthy on dashboards and in templates.
+
+        Log the transition and notify listeners so entities go
+        ``unavailable`` instead.  Every other failure mode is already
+        logged and broadcast by Home Assistant itself.
+        """
+        was_successful = self.last_update_success
+        try:
+            await super()._async_refresh(
+                log_failures=log_failures,
+                raise_on_auth_failed=raise_on_auth_failed,
+                scheduled=scheduled,
+                raise_on_entry_error=raise_on_entry_error,
+            )
+        finally:
+            if (
+                was_successful
+                and not self.last_update_success
+                and isinstance(self.last_exception, asyncio.CancelledError)
+                and not self._shutdown_requested
+                and not self.hass.is_stopping
+            ):
+                LOGGER.warning(
+                    "Refresh of %s data was cancelled; entities are now unavailable, retrying in %s",
+                    self.name,
+                    RETRY_INTERVAL,
+                )
+                self.async_update_listeners()
 
     # ------------------------------------------------------------------
     # Centralised write helpers
@@ -185,7 +279,13 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
 
         async with self._write_locks[fire_id]:
             overview = await self.client.get_fire_overview(fire_id)
-            param = next(p for p in overview.parameters if isinstance(p, param_type))
+            param = next((p for p in overview.parameters if isinstance(p, param_type)), None)
+            if param is None:
+                # Without a default, ``next`` would raise a bare
+                # StopIteration inside a coroutine, which Python turns
+                # into an opaque RuntimeError.
+                msg = f"Fire {fire_id} does not report {param_type.__name__}, cannot write {sorted(changes)}"
+                raise HomeAssistantError(msg)
             new_param = dataclasses.replace(param, **changes)
             await self.client.write_parameters(fire_id, [new_param])
         self._apply_optimistic_param_update(fire_id, param_type, new_param, overview)

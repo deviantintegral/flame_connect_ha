@@ -112,7 +112,7 @@ Each fireplace device exposes the following entities:
 
 ## Data Refresh
 
-The integration automatically refreshes data every 24 hours to keep OAuth tokens alive. For on-demand updates, use the **Refresh data** button entity. Each fireplace has its own refresh button.
+The integration automatically refreshes data every 24 hours to keep OAuth tokens alive. If a refresh fails, it retries every 5 minutes until it succeeds instead of waiting for the next daily poll. For on-demand updates, use the **Refresh data** button entity. Each fireplace has its own refresh button; it stays available even while the fireplace is unreachable, so you can always retry by hand.
 
 ## Quality Scale
 
