@@ -25,6 +25,7 @@ from custom_components.flameconnect.coordinator.base import RETRY_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
+from tests.conftest import block_client_call, cancel_in_flight
 
 # ------------------------------------------------------------------
 # _async_setup: fire filtering
@@ -375,27 +376,6 @@ async def test_turn_off_fire_optimistic_update(
 # ------------------------------------------------------------------
 
 
-def _blocking_overview(
-    mock_flameconnect_client: AsyncMock,
-    overview: FireOverview,
-) -> tuple[asyncio.Event, asyncio.Event]:
-    """Make ``get_fire_overview`` park until released.
-
-    Returns the event set once the call is in flight and the event that
-    lets it return, so a test can cancel a caller mid-request.
-    """
-    entered = asyncio.Event()
-    release = asyncio.Event()
-
-    async def blocked(_fire_id: str) -> FireOverview:
-        entered.set()
-        await release.wait()
-        return overview
-
-    mock_flameconnect_client.get_fire_overview = AsyncMock(side_effect=blocked)
-    return entered, release
-
-
 async def _make_coordinator(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
@@ -431,12 +411,8 @@ async def test_refresh_cancelled_by_caller_keeps_previous_state(
     unsub = coordinator.async_add_listener(lambda: updates.append(None))
     steady_interval = coordinator.update_interval
 
-    entered, release = _blocking_overview(mock_flameconnect_client, mock_fire_overview)
-    caller = hass.async_create_task(coordinator.async_refresh())
-    await entered.wait()
-    caller.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await caller
+    entered, release = block_client_call(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
+    await cancel_in_flight(hass, coordinator.async_refresh(), entered)
 
     assert coordinator.last_update_success is True
     assert coordinator.last_exception is None
@@ -468,12 +444,8 @@ async def test_refresh_cancelled_by_caller_keeps_previous_failure(
     assert coordinator.last_update_success is False
     assert coordinator.update_interval == RETRY_INTERVAL
 
-    entered, release = _blocking_overview(mock_flameconnect_client, mock_fire_overview)
-    caller = hass.async_create_task(coordinator.async_refresh())
-    await entered.wait()
-    caller.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await caller
+    entered, release = block_client_call(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
+    await cancel_in_flight(hass, coordinator.async_refresh(), entered)
 
     assert coordinator.last_update_success is False
     assert isinstance(coordinator.last_exception, UpdateFailed)
@@ -536,15 +508,13 @@ async def test_write_fields_completes_when_caller_cancelled(
     coordinator.fires = [mock_fire]
     coordinator.async_set_updated_data({"abc123": mock_fire_overview})
 
-    entered, release = _blocking_overview(mock_flameconnect_client, mock_fire_overview)
+    entered, release = block_client_call(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
     with patch.object(coordinator, "async_request_refresh", new_callable=AsyncMock):
-        caller = hass.async_create_task(
-            coordinator.async_write_fields("abc123", FlameEffectParam, flame_effect=FlameEffect.OFF)
+        await cancel_in_flight(
+            hass,
+            coordinator.async_write_fields("abc123", FlameEffectParam, flame_effect=FlameEffect.OFF),
+            entered,
         )
-        await entered.wait()
-        caller.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await caller
 
         # The read was in flight when the caller went away; the write must
         # still be delivered.
@@ -577,21 +547,10 @@ async def test_turn_on_fire_completes_when_caller_cancelled(
     coordinator.fires = [mock_fire]
     coordinator.async_set_updated_data({"abc123": dataclasses.replace(mock_fire_overview, parameters=standby_params)})
 
-    entered = asyncio.Event()
-    release = asyncio.Event()
-
-    async def blocked_turn_on(_fire_id: str) -> None:
-        entered.set()
-        await release.wait()
-
-    mock_flameconnect_client.turn_on = AsyncMock(side_effect=blocked_turn_on)
+    entered, release = block_client_call(mock_flameconnect_client, "turn_on")
 
     with patch.object(coordinator, "async_request_refresh", new_callable=AsyncMock):
-        caller = hass.async_create_task(coordinator.async_turn_on_fire("abc123"))
-        await entered.wait()
-        caller.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await caller
+        await cancel_in_flight(hass, coordinator.async_turn_on_fire("abc123"), entered)
 
         release.set()
         await hass.async_block_till_done()

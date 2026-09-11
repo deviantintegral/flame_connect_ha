@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
 from flameconnect import (
@@ -37,7 +39,51 @@ from flameconnect import (
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+
+    from homeassistant.core import HomeAssistant
+
 DOMAIN = "flameconnect"
+
+
+def block_client_call(
+    mock_client: AsyncMock,
+    method: str,
+    result: Any = None,
+) -> tuple[asyncio.Event, asyncio.Event]:
+    """Make *method* on the mocked client park until released.
+
+    Returns the event set once the call is in flight and the event that
+    lets it return, so a test can cancel a caller mid-request.
+    """
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def blocked(*_args: object, **_kwargs: object) -> Any:
+        entered.set()
+        await release.wait()
+        return result
+
+    setattr(mock_client, method, AsyncMock(side_effect=blocked))
+    return entered, release
+
+
+async def cancel_in_flight(
+    hass: HomeAssistant,
+    coro: Coroutine[Any, Any, object],
+    entered: asyncio.Event,
+) -> None:
+    """Run *coro* as a task and cancel it once it has reached *entered*.
+
+    Mirrors what Home Assistant does to a service call when the script or
+    automation that issued it is stopped.
+    """
+    caller = hass.async_create_task(coro)
+    await entered.wait()
+    caller.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await caller
 
 
 @pytest.fixture(autouse=True)
