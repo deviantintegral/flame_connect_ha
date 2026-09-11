@@ -9,7 +9,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
-from tests.conftest import block_client_call, cancel_in_flight
 
 
 async def _setup_integration(
@@ -70,6 +69,7 @@ async def test_refresh_button_press_survives_cancelled_caller(
     config_entry: MockConfigEntry,
     mock_flameconnect_client: AsyncMock,
     mock_fire_overview: FireOverview,
+    cancellation,
 ) -> None:
     """A cancelled caller must not take the integration unavailable.
 
@@ -81,10 +81,9 @@ async def test_refresh_button_press_survives_cancelled_caller(
     await _setup_integration(hass, config_entry, mock_flameconnect_client)
     coordinator = config_entry.runtime_data.coordinator
 
-    entered, release = block_client_call(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
+    entered, release = cancellation.block(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
 
-    await cancel_in_flight(
-        hass,
+    await cancellation.cancel_in_flight(
         hass.services.async_call(
             "button",
             "press",
