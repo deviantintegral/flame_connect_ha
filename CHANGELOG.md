@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/deviantintegral/flame_connect_ha/compare/v0.3.2...v0.3.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* do not treat a cancelled caller as a failed refresh ([d2913f4](https://github.com/deviantintegral/flame_connect_ha/commit/d2913f41c488f5d86b0475d8cb323cdf1a8afa84))
+
 ## [0.3.2](https://github.com/deviantintegral/flame_connect_ha/compare/v0.3.1...v0.3.2) (2026-09-09)
 
 
