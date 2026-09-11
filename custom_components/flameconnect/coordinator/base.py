@@ -224,11 +224,14 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         * **The awaiting task was cancelled** (``task.cancelling() > 0``),
           so Home Assistant re-raises.  This is not evidence about the
           fireplace: the caller simply went away, usually before a single
-          request was sent.  A ``mode: restart`` script cancels its own
-          in-flight ``button.press`` every time it re-triggers, which would
-          otherwise take the whole integration unavailable for
-          :data:`RETRY_INTERVAL`.  Restore the previous state — the last
-          known good data is a better answer than "unavailable".
+          request was sent, and taking the whole integration unavailable
+          for :data:`RETRY_INTERVAL` over it is wrong.  Restore the
+          previous state — the last known good data is a better answer
+          than "unavailable".  This covers the refresh paths that cannot
+          be shielded because the integration does not own the caller,
+          principally Home Assistant's own scheduled background refresh;
+          a refresh this integration starts goes through
+          :meth:`async_refresh_shielded` and is never cancelled this way.
 
         * **Something inside the update was cancelled** while this task was
           not.  Home Assistant swallows that one, and it is a genuine
@@ -294,7 +297,18 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
     # Cancellation-proof entry points
     # ------------------------------------------------------------------
 
-    async def _async_shielded(self, coro: Coroutine[Any, Any, None]) -> None:
+    @callback
+    def _async_owned_task(self, coro: Coroutine[Any, Any, None], name: str) -> asyncio.Task[None]:
+        """Create *coro* as a task owned by this integration's config entry.
+
+        Naming the task matters: Home Assistant identifies tasks by name
+        in the "did not complete in time" unload warning and in the
+        event-loop error it logs for a shielded task whose awaiter went
+        away, and an unnamed task shows up there as ``None``.
+        """
+        return self.config_entry.async_create_task(self.hass, coro, name=name, eager_start=True)
+
+    async def _async_shielded(self, coro: Coroutine[Any, Any, None], name: str) -> None:
         """Run *coro* in a task this integration owns and await it shielded.
 
         Entity service handlers run inside the task of whoever called
@@ -310,9 +324,7 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         The task is created on the config entry, so an unload waits for an
         in-flight write instead of cancelling it.
         """
-        await asyncio.shield(
-            self.config_entry.async_create_task(self.hass, coro, eager_start=True),
-        )
+        await asyncio.shield(self._async_owned_task(coro, name))
 
     async def async_refresh_shielded(self) -> None:
         """Refresh now, completing even if the caller is cancelled.
@@ -320,7 +332,7 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         The counterpart of ``async_refresh`` for callers that run inside a
         task Home Assistant may cancel; see :meth:`_async_shielded`.
         """
-        await self._async_shielded(self.async_refresh())
+        await self._async_shielded(self.async_refresh(), "refresh")
 
     # ------------------------------------------------------------------
     # Centralised write helpers
@@ -358,7 +370,10 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
             merged.update(pending)
             changes = merged
 
-        await self._async_shielded(self._async_read_modify_write(fire_id, param_type, changes))
+        await self._async_shielded(
+            self._async_read_modify_write(fire_id, param_type, changes),
+            f"write {param_type.__name__} to {fire_id}",
+        )
 
     async def _async_read_modify_write(
         self,
@@ -427,8 +442,15 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         changes = self._pending_writes.pop(key, None)
         self._debounce_timers.pop(key, None)
         if changes:
-            # Already an integration-owned task, so no shield is needed.
-            self.hass.async_create_task(self._async_read_modify_write(fire_id, param_type, changes))
+            # Already running in its own task, so no shield is needed, but
+            # the task still has to be owned by the config entry: an unload
+            # waits for the entry's tasks, and a debounced write left on
+            # ``hass`` would keep running — and re-arm the coordinator —
+            # against an entry that is being torn down or reloaded.
+            self._async_owned_task(
+                self._async_read_modify_write(fire_id, param_type, changes),
+                f"debounced write {param_type.__name__} to {fire_id}",
+            )
 
     async def _async_flush_pending_writes(self, fire_id: str) -> None:
         """Immediately flush all pending debounced writes for a fire.
@@ -447,11 +469,11 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
 
     async def async_turn_on_fire(self, fire_id: str) -> None:
         """Flush pending writes, then turn the fire on under lock."""
-        await self._async_shielded(self._async_set_fire_power(fire_id, on=True))
+        await self._async_shielded(self._async_set_fire_power(fire_id, on=True), f"turn on {fire_id}")
 
     async def async_turn_off_fire(self, fire_id: str) -> None:
         """Flush pending writes, then turn the fire off under lock."""
-        await self._async_shielded(self._async_set_fire_power(fire_id, on=False))
+        await self._async_shielded(self._async_set_fire_power(fire_id, on=False), f"turn off {fire_id}")
 
     async def _async_set_fire_power(self, fire_id: str, *, on: bool) -> None:
         """Flush pending writes, then switch the fire on or off under lock.

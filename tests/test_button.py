@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, patch
 
 from flameconnect import FireOverview
-import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
+from tests.conftest import block_client_call, cancel_in_flight
 
 
 async def _setup_integration(
@@ -82,28 +81,18 @@ async def test_refresh_button_press_survives_cancelled_caller(
     await _setup_integration(hass, config_entry, mock_flameconnect_client)
     coordinator = config_entry.runtime_data.coordinator
 
-    entered = asyncio.Event()
-    release = asyncio.Event()
+    entered, release = block_client_call(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
 
-    async def blocked(_fire_id: str) -> FireOverview:
-        entered.set()
-        await release.wait()
-        return mock_fire_overview
-
-    mock_flameconnect_client.get_fire_overview = AsyncMock(side_effect=blocked)
-
-    caller = hass.async_create_task(
+    await cancel_in_flight(
+        hass,
         hass.services.async_call(
             "button",
             "press",
             {"entity_id": "button.living_room_refresh_data"},
             blocking=True,
-        )
+        ),
+        entered,
     )
-    await entered.wait()
-    caller.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await caller
 
     assert coordinator.last_update_success is True
     assert hass.states.get("switch.living_room_power").state != STATE_UNAVAILABLE
