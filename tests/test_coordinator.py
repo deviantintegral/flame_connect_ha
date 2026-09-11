@@ -25,7 +25,6 @@ from custom_components.flameconnect.coordinator.base import RETRY_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
-from tests.conftest import block_client_call, cancel_in_flight
 
 # ------------------------------------------------------------------
 # _async_setup: fire filtering
@@ -376,27 +375,11 @@ async def test_turn_off_fire_optimistic_update(
 # ------------------------------------------------------------------
 
 
-async def _make_coordinator(
-    hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    mock_flameconnect_client: AsyncMock,
-    mock_fire: Fire,
-) -> FlameConnectDataUpdateCoordinator:
-    """Return a coordinator that has completed one successful refresh."""
-    config_entry.add_to_hass(hass)
-    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
-    coordinator.fires = [mock_fire]
-    await coordinator.async_refresh()
-    assert coordinator.last_update_success is True
-    return coordinator
-
-
 async def test_refresh_cancelled_by_caller_keeps_previous_state(
     hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    mock_flameconnect_client: AsyncMock,
-    mock_fire: Fire,
+    coordinator: FlameConnectDataUpdateCoordinator,
     mock_fire_overview: FireOverview,
+    cancellation,
 ) -> None:
     """Cancelling the task that awaits a refresh must not fail the coordinator.
 
@@ -406,13 +389,12 @@ async def test_refresh_cancelled_by_caller_keeps_previous_state(
     a failed update, which would take every entity unavailable and drop the
     poll to RETRY_INTERVAL even though nothing is wrong with the fireplace.
     """
-    coordinator = await _make_coordinator(hass, config_entry, mock_flameconnect_client, mock_fire)
     updates: list[None] = []
     unsub = coordinator.async_add_listener(lambda: updates.append(None))
     steady_interval = coordinator.update_interval
 
-    entered, release = block_client_call(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
-    await cancel_in_flight(hass, coordinator.async_refresh(), entered)
+    entered, release = cancellation.block(coordinator.client, "get_fire_overview", mock_fire_overview)
+    await cancellation.cancel_in_flight(coordinator.async_refresh(), entered)
 
     assert coordinator.last_update_success is True
     assert coordinator.last_exception is None
@@ -430,22 +412,20 @@ async def test_refresh_cancelled_by_caller_keeps_previous_state(
 
 async def test_refresh_cancelled_by_caller_keeps_previous_failure(
     hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    mock_flameconnect_client: AsyncMock,
-    mock_fire: Fire,
+    coordinator: FlameConnectDataUpdateCoordinator,
     mock_fire_overview: FireOverview,
+    cancellation,
 ) -> None:
     """A cancelled caller must not paper over a coordinator that is failing."""
-    coordinator = await _make_coordinator(hass, config_entry, mock_flameconnect_client, mock_fire)
     unsub = coordinator.async_add_listener(lambda: None)
 
-    mock_flameconnect_client.get_fire_overview.side_effect = ApiError(500, "server error")
+    coordinator.client.get_fire_overview.side_effect = ApiError(500, "server error")
     await coordinator.async_refresh()
     assert coordinator.last_update_success is False
     assert coordinator.update_interval == RETRY_INTERVAL
 
-    entered, release = block_client_call(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
-    await cancel_in_flight(hass, coordinator.async_refresh(), entered)
+    entered, release = cancellation.block(coordinator.client, "get_fire_overview", mock_fire_overview)
+    await cancellation.cancel_in_flight(coordinator.async_refresh(), entered)
 
     assert coordinator.last_update_success is False
     assert isinstance(coordinator.last_exception, UpdateFailed)
@@ -459,9 +439,7 @@ async def test_refresh_cancelled_by_caller_keeps_previous_failure(
 
 async def test_refresh_cancelled_internally_marks_entities_unavailable(
     hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    mock_flameconnect_client: AsyncMock,
-    mock_fire: Fire,
+    coordinator: FlameConnectDataUpdateCoordinator,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A cancellation from inside the update is a real failure and must show.
@@ -471,11 +449,10 @@ async def test_refresh_cancelled_internally_marks_entities_unavailable(
     failure, but it is the only failure mode Home Assistant logs nothing
     for, so entities would go unavailable with no explanation anywhere.
     """
-    coordinator = await _make_coordinator(hass, config_entry, mock_flameconnect_client, mock_fire)
     updates: list[None] = []
     unsub = coordinator.async_add_listener(lambda: updates.append(None))
 
-    mock_flameconnect_client.get_fire_overview.side_effect = asyncio.CancelledError
+    coordinator.client.get_fire_overview.side_effect = asyncio.CancelledError
     with caplog.at_level("WARNING"):
         await coordinator.async_refresh()
 
@@ -491,10 +468,9 @@ async def test_refresh_cancelled_internally_marks_entities_unavailable(
 
 async def test_write_fields_completes_when_caller_cancelled(
     hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    mock_flameconnect_client: AsyncMock,
-    mock_fire: Fire,
+    coordinator: FlameConnectDataUpdateCoordinator,
     mock_fire_overview: FireOverview,
+    cancellation,
 ) -> None:
     """A cancelled caller must not abandon a read-modify-write half way.
 
@@ -503,27 +479,21 @@ async def test_write_fields_completes_when_caller_cancelled(
     with the automation trace showing the step as run and nothing reaching
     the fireplace.
     """
-    config_entry.add_to_hass(hass)
-    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
-    coordinator.fires = [mock_fire]
-    coordinator.async_set_updated_data({"abc123": mock_fire_overview})
-
-    entered, release = block_client_call(mock_flameconnect_client, "get_fire_overview", mock_fire_overview)
+    entered, release = cancellation.block(coordinator.client, "get_fire_overview", mock_fire_overview)
     with patch.object(coordinator, "async_request_refresh", new_callable=AsyncMock):
-        await cancel_in_flight(
-            hass,
+        await cancellation.cancel_in_flight(
             coordinator.async_write_fields("abc123", FlameEffectParam, flame_effect=FlameEffect.OFF),
             entered,
         )
 
         # The read was in flight when the caller went away; the write must
         # still be delivered.
-        assert mock_flameconnect_client.write_parameters.call_count == 0
+        assert coordinator.client.write_parameters.call_count == 0
         release.set()
         await hass.async_block_till_done()
 
-    mock_flameconnect_client.write_parameters.assert_called_once()
-    written = mock_flameconnect_client.write_parameters.call_args[0][1][0]
+    coordinator.client.write_parameters.assert_called_once()
+    written = coordinator.client.write_parameters.call_args[0][1][0]
     assert written.flame_effect == FlameEffect.OFF
 
     flame_param = next(p for p in coordinator.data["abc123"].parameters if isinstance(p, FlameEffectParam))
@@ -532,29 +502,25 @@ async def test_write_fields_completes_when_caller_cancelled(
 
 async def test_turn_on_fire_completes_when_caller_cancelled(
     hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    mock_flameconnect_client: AsyncMock,
-    mock_fire: Fire,
+    coordinator: FlameConnectDataUpdateCoordinator,
     mock_fire_overview: FireOverview,
+    cancellation,
 ) -> None:
     """Turning the fire on must survive its caller being cancelled."""
-    config_entry.add_to_hass(hass)
     standby_params = [
         dataclasses.replace(p, mode=FireMode.STANDBY) if isinstance(p, ModeParam) else p
         for p in mock_fire_overview.parameters
     ]
-    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
-    coordinator.fires = [mock_fire]
     coordinator.async_set_updated_data({"abc123": dataclasses.replace(mock_fire_overview, parameters=standby_params)})
 
-    entered, release = block_client_call(mock_flameconnect_client, "turn_on")
+    entered, release = cancellation.block(coordinator.client, "turn_on")
 
     with patch.object(coordinator, "async_request_refresh", new_callable=AsyncMock):
-        await cancel_in_flight(hass, coordinator.async_turn_on_fire("abc123"), entered)
+        await cancellation.cancel_in_flight(coordinator.async_turn_on_fire("abc123"), entered)
 
         release.set()
         await hass.async_block_till_done()
 
-    mock_flameconnect_client.turn_on.assert_called_once_with("abc123")
+    coordinator.client.turn_on.assert_called_once_with("abc123")
     mode_param = next(p for p in coordinator.data["abc123"].parameters if isinstance(p, ModeParam))
     assert mode_param.mode == FireMode.MANUAL

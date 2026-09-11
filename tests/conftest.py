@@ -39,51 +39,51 @@ from flameconnect import (
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.flameconnect.coordinator import FlameConnectDataUpdateCoordinator
+from homeassistant.core import HomeAssistant
+
 if TYPE_CHECKING:
     from collections.abc import Coroutine
-
-    from homeassistant.core import HomeAssistant
 
 DOMAIN = "flameconnect"
 
 
-def block_client_call(
-    mock_client: AsyncMock,
-    method: str,
-    result: Any = None,
-) -> tuple[asyncio.Event, asyncio.Event]:
-    """Make *method* on the mocked client park until released.
+class CancellationHelper:
+    """Park a mocked client call, then cancel the task awaiting it.
 
-    Returns the event set once the call is in flight and the event that
-    lets it return, so a test can cancel a caller mid-request.
+    Reproduces what Home Assistant does to a service call when the script
+    or automation that issued it is stopped -- a ``mode: restart`` script
+    cancels its own in-flight call every time it re-triggers.
     """
-    entered = asyncio.Event()
-    release = asyncio.Event()
 
-    async def blocked(*_args: object, **_kwargs: object) -> Any:
-        entered.set()
-        await release.wait()
-        return result
+    def __init__(self, hass: HomeAssistant) -> None:
+        """Bind the helper to the running Home Assistant instance."""
+        self._hass = hass
 
-    setattr(mock_client, method, AsyncMock(side_effect=blocked))
-    return entered, release
+    def block(self, mock_client: AsyncMock, method: str, result: Any = None) -> tuple[asyncio.Event, asyncio.Event]:
+        """Make *method* park until released.
 
+        Returns the event set once the call is in flight and the event
+        that lets it return.
+        """
+        entered = asyncio.Event()
+        release = asyncio.Event()
 
-async def cancel_in_flight(
-    hass: HomeAssistant,
-    coro: Coroutine[Any, Any, object],
-    entered: asyncio.Event,
-) -> None:
-    """Run *coro* as a task and cancel it once it has reached *entered*.
+        async def blocked(*_args: object, **_kwargs: object) -> Any:
+            entered.set()
+            await release.wait()
+            return result
 
-    Mirrors what Home Assistant does to a service call when the script or
-    automation that issued it is stopped.
-    """
-    caller = hass.async_create_task(coro)
-    await entered.wait()
-    caller.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await caller
+        setattr(mock_client, method, AsyncMock(side_effect=blocked))
+        return entered, release
+
+    async def cancel_in_flight(self, coro: Coroutine[Any, Any, object], entered: asyncio.Event) -> None:
+        """Run *coro* as a task and cancel it once it has reached *entered*."""
+        caller = self._hass.async_create_task(coro)
+        await entered.wait()
+        caller.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await caller
 
 
 @pytest.fixture(autouse=True)
@@ -203,3 +203,29 @@ def mock_setup_entry():
         return_value=True,
     ) as mock:
         yield mock
+
+
+@pytest.fixture
+def cancellation(hass: HomeAssistant) -> CancellationHelper:
+    """Return the helper for cancelling a caller mid-request."""
+    return CancellationHelper(hass)
+
+
+@pytest.fixture
+async def coordinator(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire: Fire,
+) -> FlameConnectDataUpdateCoordinator:
+    """Return a coordinator that has completed one successful refresh.
+
+    ``coordinator.client`` is ``mock_flameconnect_client``, so a test can
+    reach the mocked API through the coordinator it is given.
+    """
+    config_entry.add_to_hass(hass)
+    coordinator = FlameConnectDataUpdateCoordinator(hass, mock_flameconnect_client, config_entry)
+    coordinator.fires = [mock_fire]
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success is True
+    return coordinator
