@@ -65,5 +65,14 @@ class FlameConnectRefreshButton(ButtonEntity, FlameConnectEntity):
         return True
 
     async def async_press(self) -> None:
-        """Handle the button press to refresh coordinator data."""
-        await self.coordinator.async_refresh()
+        """Handle the button press to refresh coordinator data.
+
+        The refresh runs in a task owned by the config entry rather than
+        inline in the caller's task.  ``button.press`` is awaited inside
+        whatever task issued it, and Home Assistant cancels that task
+        routinely — a ``mode: restart`` script cancels its own in-flight
+        service call every time it re-triggers.  Awaiting the refresh
+        directly would abandon the refresh the user asked for at the first
+        cancellation, which is exactly when this recovery control matters.
+        """
+        await self.coordinator.async_refresh_shielded()

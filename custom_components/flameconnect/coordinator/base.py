@@ -8,13 +8,19 @@ the fireplace out of service until the next daily poll.
 
 All entity writes are routed through this coordinator to prevent races
 (per-fire ``asyncio.Lock``) and to debounce rapid slider changes.
+
+Refreshes and writes both run in tasks this integration owns rather than
+inline in the caller's task, because Home Assistant cancels the task of a
+service call whenever the script or automation that issued it is stopped.
+Left inline, that turns a ``mode: restart`` script re-triggering itself
+into a failed coordinator update or a half-finished write.
 """
 
 from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 import dataclasses
 from datetime import datetime, timedelta
 from functools import partial
@@ -206,21 +212,33 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         scheduled: bool = False,
         raise_on_entry_error: bool = False,
     ) -> None:
-        """Refresh data, keeping a cancelled refresh from going unnoticed.
+        """Refresh data, separating caller cancellation from device failure.
 
         ``DataUpdateCoordinator`` treats ``asyncio.CancelledError`` as a
-        failed update but logs nothing at all for it, and re-raises the
-        cancellation before it reaches ``async_update_listeners``.  The
-        result is entities that report ``available is False`` — so every
-        service call to them is silently dropped — while the state machine
-        keeps serving the values from the last successful poll, which makes
-        the fireplace look healthy on dashboards and in templates.
+        failed update: ``last_update_success`` goes False, every entity
+        reports ``available is False`` — so Home Assistant silently drops
+        service calls to them — and :meth:`_schedule_refresh` drops to
+        :data:`RETRY_INTERVAL`.  It distinguishes two cases by whether the
+        running task was itself cancelled, and both need handling:
 
-        Log the transition and notify listeners so entities go
-        ``unavailable`` instead.  Every other failure mode is already
-        logged and broadcast by Home Assistant itself.
+        * **The awaiting task was cancelled** (``task.cancelling() > 0``),
+          so Home Assistant re-raises.  This is not evidence about the
+          fireplace: the caller simply went away, usually before a single
+          request was sent.  A ``mode: restart`` script cancels its own
+          in-flight ``button.press`` every time it re-triggers, which would
+          otherwise take the whole integration unavailable for
+          :data:`RETRY_INTERVAL`.  Restore the previous state — the last
+          known good data is a better answer than "unavailable".
+
+        * **Something inside the update was cancelled** while this task was
+          not.  Home Assistant swallows that one, and it is a genuine
+          failure — the fireplace state is unknown — but it is the only
+          failure mode Home Assistant logs nothing at all for, so every
+          entity going ``unavailable`` would have no explanation anywhere.
+          Log it; the listener broadcast is Home Assistant's own.
         """
         was_successful = self.last_update_success
+        previous_exception = self.last_exception
         try:
             await super()._async_refresh(
                 log_failures=log_failures,
@@ -228,20 +246,81 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
                 scheduled=scheduled,
                 raise_on_entry_error=raise_on_entry_error,
             )
-        finally:
-            if (
-                was_successful
-                and not self.last_update_success
-                and isinstance(self.last_exception, asyncio.CancelledError)
-                and not self._shutdown_requested
-                and not self.hass.is_stopping
-            ):
-                LOGGER.warning(
-                    "Refresh of %s data was cancelled; entities are now unavailable, retrying in %s",
-                    self.name,
-                    RETRY_INTERVAL,
-                )
-                self.async_update_listeners()
+        except asyncio.CancelledError:
+            self._restore_after_caller_cancellation(was_successful, previous_exception)
+            raise
+
+        if (
+            was_successful
+            and not self.last_update_success
+            and isinstance(self.last_exception, asyncio.CancelledError)
+            and not self._shutdown_requested
+            and not self.hass.is_stopping
+        ):
+            LOGGER.warning(
+                "Refresh of %s data was cancelled; entities are now unavailable, retrying in %s",
+                self.name,
+                RETRY_INTERVAL,
+            )
+
+    @callback
+    def _restore_after_caller_cancellation(
+        self,
+        was_successful: bool,
+        previous_exception: BaseException | None,
+    ) -> None:
+        """Undo the update failure recorded for a cancelled caller.
+
+        Called when ``asyncio.CancelledError`` propagated out of
+        ``DataUpdateCoordinator._async_refresh``, which only happens when
+        the task awaiting the refresh was cancelled.  Roll back the failure
+        it recorded, and where that failure had shortened the poll to
+        :data:`RETRY_INTERVAL`, re-arm the schedule.  Shutdown is left
+        alone: there is nothing left to schedule and nothing left to
+        report.
+        """
+        if self.last_update_success or self._shutdown_requested or self.hass.is_stopping:
+            return
+        self.last_update_success = was_successful
+        self.last_exception = previous_exception
+        if was_successful and self._listeners:
+            self._schedule_refresh()
+        LOGGER.debug(
+            "Refresh of %s data was cancelled by its caller; keeping the previous state",
+            self.name,
+        )
+
+    # ------------------------------------------------------------------
+    # Cancellation-proof entry points
+    # ------------------------------------------------------------------
+
+    async def _async_shielded(self, coro: Coroutine[Any, Any, None]) -> None:
+        """Run *coro* in a task this integration owns and await it shielded.
+
+        Entity service handlers run inside the task of whoever called
+        them, and Home Assistant cancels that task as a matter of normal
+        operation — a ``mode: restart`` script cancels its own in-flight
+        service call every time it re-triggers.  A cancellation landing
+        between the read and the write of a read-modify-write cycle
+        abandons the write *after* the API has already been read, with the
+        per-fire lock released by unwinding and nothing logged anywhere:
+        the automation trace shows the step as run and the fireplace never
+        hears about it.
+
+        The task is created on the config entry, so an unload waits for an
+        in-flight write instead of cancelling it.
+        """
+        await asyncio.shield(
+            self.config_entry.async_create_task(self.hass, coro, eager_start=True),
+        )
+
+    async def async_refresh_shielded(self) -> None:
+        """Refresh now, completing even if the caller is cancelled.
+
+        The counterpart of ``async_refresh`` for callers that run inside a
+        task Home Assistant may cancel; see :meth:`_async_shielded`.
+        """
+        await self._async_shielded(self.async_refresh())
 
     # ------------------------------------------------------------------
     # Centralised write helpers
@@ -265,6 +344,8 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
 
         Any pending debounced writes for the same ``(fire_id, param_type)``
         are absorbed into this write so they are not lost.
+
+        The cycle itself runs shielded, see :meth:`_async_shielded`.
         """
         key = (fire_id, param_type)
         pending = self._pending_writes.pop(key, None)
@@ -277,6 +358,19 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
             merged.update(pending)
             changes = merged
 
+        await self._async_shielded(self._async_read_modify_write(fire_id, param_type, changes))
+
+    async def _async_read_modify_write(
+        self,
+        fire_id: str,
+        param_type: type[Parameter],
+        changes: dict[str, Any],
+    ) -> None:
+        """Perform one read-modify-write cycle; see :meth:`async_write_fields`.
+
+        Callers must either be running shielded already or not care about
+        being cancelled part way through.
+        """
         async with self._write_locks[fire_id]:
             overview = await self.client.get_fire_overview(fire_id)
             param = next((p for p in overview.parameters if isinstance(p, param_type)), None)
@@ -333,10 +427,15 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
         changes = self._pending_writes.pop(key, None)
         self._debounce_timers.pop(key, None)
         if changes:
-            self.hass.async_create_task(self.async_write_fields(fire_id, param_type, **changes))
+            # Already an integration-owned task, so no shield is needed.
+            self.hass.async_create_task(self._async_read_modify_write(fire_id, param_type, changes))
 
-    async def async_flush_pending_writes(self, fire_id: str) -> None:
-        """Immediately flush all pending debounced writes for a fire."""
+    async def _async_flush_pending_writes(self, fire_id: str) -> None:
+        """Immediately flush all pending debounced writes for a fire.
+
+        Only ever called from inside an already shielded write, so the
+        individual cycles use the unshielded helper.
+        """
         keys = [k for k in self._pending_writes if k[0] == fire_id]
         for key in keys:
             cancel = self._debounce_timers.pop(key, None)
@@ -344,22 +443,30 @@ class FlameConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, FireOver
                 cancel()
             changes = self._pending_writes.pop(key, None)
             if changes:
-                await self.async_write_fields(key[0], key[1], **changes)
+                await self._async_read_modify_write(key[0], key[1], changes)
 
     async def async_turn_on_fire(self, fire_id: str) -> None:
         """Flush pending writes, then turn the fire on under lock."""
-        await self.async_flush_pending_writes(fire_id)
-        async with self._write_locks[fire_id]:
-            await self.client.turn_on(fire_id)
-        self._apply_optimistic_mode_update(fire_id, FireMode.MANUAL)
-        await self.async_request_refresh()
+        await self._async_shielded(self._async_set_fire_power(fire_id, on=True))
 
     async def async_turn_off_fire(self, fire_id: str) -> None:
         """Flush pending writes, then turn the fire off under lock."""
-        await self.async_flush_pending_writes(fire_id)
+        await self._async_shielded(self._async_set_fire_power(fire_id, on=False))
+
+    async def _async_set_fire_power(self, fire_id: str, *, on: bool) -> None:
+        """Flush pending writes, then switch the fire on or off under lock.
+
+        Runs shielded, see :meth:`_async_shielded`: a cancellation between
+        the flush and the power command would leave the flushed settings
+        written to a fireplace that was never switched.
+        """
+        await self._async_flush_pending_writes(fire_id)
         async with self._write_locks[fire_id]:
-            await self.client.turn_off(fire_id)
-        self._apply_optimistic_mode_update(fire_id, FireMode.STANDBY)
+            if on:
+                await self.client.turn_on(fire_id)
+            else:
+                await self.client.turn_off(fire_id)
+        self._apply_optimistic_mode_update(fire_id, FireMode.MANUAL if on else FireMode.STANDBY)
         await self.async_request_refresh()
 
     @callback

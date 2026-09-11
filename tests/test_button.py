@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
+from flameconnect import FireOverview
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 
 
@@ -60,3 +64,53 @@ async def test_refresh_button_press(
 
     # The coordinator refresh should trigger a new get_fire_overview call
     mock_flameconnect_client.get_fire_overview.assert_called()
+
+
+async def test_refresh_button_press_survives_cancelled_caller(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    mock_flameconnect_client: AsyncMock,
+    mock_fire_overview: FireOverview,
+) -> None:
+    """A cancelled caller must not take the integration unavailable.
+
+    Home Assistant cancels the task of a service call when the script or
+    automation that issued it is stopped, which a ``mode: restart`` script
+    does every time it re-triggers.  The refresh must still complete and
+    the fireplace must stay available: nothing was wrong with it.
+    """
+    await _setup_integration(hass, config_entry, mock_flameconnect_client)
+    coordinator = config_entry.runtime_data.coordinator
+
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def blocked(_fire_id: str) -> FireOverview:
+        entered.set()
+        await release.wait()
+        return mock_fire_overview
+
+    mock_flameconnect_client.get_fire_overview = AsyncMock(side_effect=blocked)
+
+    caller = hass.async_create_task(
+        hass.services.async_call(
+            "button",
+            "press",
+            {"entity_id": "button.living_room_refresh_data"},
+            blocking=True,
+        )
+    )
+    await entered.wait()
+    caller.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await caller
+
+    assert coordinator.last_update_success is True
+    assert hass.states.get("switch.living_room_power").state != STATE_UNAVAILABLE
+
+    # The refresh the user asked for still runs to completion.
+    release.set()
+    await hass.async_block_till_done()
+    mock_flameconnect_client.get_fire_overview.assert_awaited_once_with("abc123")
+    assert coordinator.last_update_success is True
+    assert hass.states.get("switch.living_room_power").state != STATE_UNAVAILABLE
