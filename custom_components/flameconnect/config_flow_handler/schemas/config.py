@@ -5,7 +5,7 @@ Provides the email + password schema used by user and reauth steps.
 
 from __future__ import annotations
 
-import voluptuous as vol
+import probatio as vol
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {

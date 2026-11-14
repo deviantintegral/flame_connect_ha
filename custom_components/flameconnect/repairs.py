@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.components.repairs import RepairsFlow
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.components.repairs.models import RepairsFlowResult
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -23,7 +23,7 @@ async def async_create_fix_flow(
 class FlameConnectReauthRepairFlow(RepairsFlow):
     """Repair flow that directs the user to re-authenticate."""
 
-    async def async_step_init(self, user_input: dict[str, str] | None = None) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, str] | None = None) -> RepairsFlowResult:
         """Handle the repair confirmation step."""
         if user_input is not None:
             entry = self.hass.config_entries.async_get_entry(self.handler)
