@@ -8,9 +8,28 @@
       "description": "Python version of the latest stable Home Assistant release (HA core's master branch tracks stable)",
       "defaultRegistryUrlTemplate": "https://raw.githubusercontent.com/home-assistant/core/master/.python-version",
       "format": "plain"
+    },
+    "hacs-homeassistant": {
+      "description": "Minimum Home Assistant version for hacs.json: the YEAR.MONTH.0 release of the Home Assistant version pinned by the latest pytest-homeassistant-custom-component",
+      "defaultRegistryUrlTemplate": "https://pypi.org/pypi/pytest-homeassistant-custom-component/json",
+      "format": "json",
+      "transformTemplates": [
+        "( $ha := $substringAfter(info.requires_dist[$contains($, \"homeassistant==\")], \"homeassistant==\"); $parts := $split($ha, \".\"); {\"releases\": [{\"version\": $parts[0] & \".\" & $parts[1] & \".0\"}], \"sourceUrl\": \"https://github.com/MatthewFlamm/pytest-homeassistant-custom-component\"} )"
+      ]
     }
   },
   "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep the hacs.json minimum Home Assistant version at the release the test harness runs against",
+      "managerFilePatterns": ["/^hacs\\.json$/"],
+      "matchStrings": [
+        "\"homeassistant\":\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "hacs-homeassistant",
+      "datasourceTemplate": "custom.hacs-homeassistant",
+      "versioningTemplate": "pep440"
+    },
     {
       "customType": "regex",
       "description": "Track the Python version of the latest stable Home Assistant release in setup-python pins",
@@ -107,6 +126,20 @@
       "matchDatasources": ["python-version"],
       "matchDepNames": ["python"],
       "automerge": false
+    },
+    {
+      "description": "hacs.json minimum: plain JSON transform has no timestamps so skip release age; review before merging",
+      "matchDatasources": ["custom.hacs-homeassistant"],
+      "minimumReleaseAge": null,
+      "automerge": false
+    },
+    {
+      "description": "Home Assistant (via the test harness), the hacs.json minimum and HA's Python version must move together",
+      "matchDepNames": ["ha-python", "hacs-homeassistant", "pytest-homeassistant-custom-component"],
+      "groupName": "Home Assistant and Python",
+      "prBodyNotes": [
+        "ℹ️ If this PR changes Python or `hacs.json`, wait until it also includes the `pytest-homeassistant-custom-component` update for the same Home Assistant release (it has a 3-day release age) before merging."
+      ]
     },
     {
       "matchDepNames": ["flameconnect"],
