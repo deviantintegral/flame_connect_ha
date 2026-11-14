@@ -3,7 +3,53 @@
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "internalChecksFilter": "strict",
   "minimumReleaseAgeBehaviour": "timestamp-required",
+  "customDatasources": {
+    "ha-python": {
+      "description": "Python version of the latest stable Home Assistant release (HA core's master branch tracks stable)",
+      "defaultRegistryUrlTemplate": "https://raw.githubusercontent.com/home-assistant/core/master/.python-version",
+      "format": "plain"
+    },
+    "hacs-homeassistant": {
+      "description": "Minimum Home Assistant version for hacs.json: the YEAR.MONTH.0 release of the Home Assistant version pinned by the latest pytest-homeassistant-custom-component",
+      "defaultRegistryUrlTemplate": "https://pypi.org/pypi/pytest-homeassistant-custom-component/json",
+      "format": "json",
+      "transformTemplates": [
+        "( $ha := $substringAfter(info.requires_dist[$contains($, \"homeassistant==\")], \"homeassistant==\"); $parts := $split($ha, \".\"); {\"releases\": [{\"version\": $parts[0] & \".\" & $parts[1] & \".0\"}], \"sourceUrl\": \"https://github.com/MatthewFlamm/pytest-homeassistant-custom-component\"} )"
+      ]
+    }
+  },
   "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep the hacs.json minimum Home Assistant version at the release the test harness runs against",
+      "managerFilePatterns": ["/^hacs\\.json$/"],
+      "matchStrings": [
+        "\"homeassistant\":\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "hacs-homeassistant",
+      "datasourceTemplate": "custom.hacs-homeassistant",
+      "versioningTemplate": "pep440"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the Python version of the latest stable Home Assistant release in setup-python pins",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: ha-python\\s+python-version:\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "ha-python",
+      "datasourceTemplate": "custom.ha-python"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the Home Assistant Python version in the devcontainer image tag",
+      "managerFilePatterns": ["/^\\.devcontainer/devcontainer\\.json$/"],
+      "matchStrings": [
+        "\"mcr\\.microsoft\\.com/devcontainers/python:(?<currentValue>\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "ha-python",
+      "datasourceTemplate": "custom.ha-python"
+    },
     {
       "customType": "regex",
       "description": "Keep manifest.json requirements in sync with requirements.txt via PyPI",
@@ -15,33 +61,33 @@
     },
     {
       "customType": "regex",
-      "description": "Track Python version in pyproject.toml requires-python",
+      "description": "Track the Home Assistant Python version in pyproject.toml requires-python",
       "managerFilePatterns": ["/^pyproject\\.toml$/"],
       "matchStrings": [
-        "requires-python\\s*=\\s*\">=(?<currentValue>[\\d.]+)\""
+        "requires-python\\s*=\\s*\">=(?<currentValue>\\d+\\.\\d+)\""
       ],
-      "depNameTemplate": "python",
-      "datasourceTemplate": "python-version"
+      "depNameTemplate": "ha-python",
+      "datasourceTemplate": "custom.ha-python"
     },
     {
       "customType": "regex",
-      "description": "Track Python version in CODESPACES.md prose",
+      "description": "Track the Home Assistant Python version in CODESPACES.md prose",
       "managerFilePatterns": ["/^docs/development/CODESPACES\\.md$/"],
       "matchStrings": [
         "Python (?<currentValue>[\\d.]+) environment"
       ],
-      "depNameTemplate": "python",
-      "datasourceTemplate": "python-version"
+      "depNameTemplate": "ha-python",
+      "datasourceTemplate": "custom.ha-python"
     },
     {
       "customType": "regex",
-      "description": "Track Python version in workflow venv cache keys",
+      "description": "Track the Home Assistant Python version in workflow venv cache keys",
       "managerFilePatterns": ["/^\\.github/workflows/.*\\.yml$/"],
       "matchStrings": [
         "ha-venv-.*-py(?<currentValue>\\d+\\.\\d+)-"
       ],
-      "depNameTemplate": "python",
-      "datasourceTemplate": "python-version"
+      "depNameTemplate": "ha-python",
+      "datasourceTemplate": "custom.ha-python"
     }
   ],
   "automerge": true,
@@ -53,13 +99,26 @@
       "description": "Home Assistant version should match the homeassistant key in hacs.json"
     },
     {
+      "description": "HA Python: track major.minor only; plain datasource has no timestamps so skip release age. CI gates automerge",
+      "matchDatasources": ["custom.ha-python"],
+      "extractVersion": "^(?<version>\\d+\\.\\d+)",
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "Python version is tracked via ha-python; ignore the built-in extraction from setup-python and the devcontainer image",
+      "matchManagers": ["github-actions", "devcontainer"],
       "matchDepNames": ["python", "mcr.microsoft.com/devcontainers/python"],
-      "groupName": "Python version",
-      "automerge": false,
-      "description": "Python version is manually managed to track Home Assistant requirements",
-      "prBodyNotes": [
-        "⚠️ **Do not automerge.** This project tracks the Home Assistant Python requirement, which is the previous minor version of Python. Verify the new version matches before merging."
-      ]
+      "enabled": false
+    },
+    {
+      "description": "hacs.json minimum: JSON transform has no timestamps so skip release age. tests/test_hacs_manifest.py fails until the test harness pins the same release, which gates automerge",
+      "matchDatasources": ["custom.hacs-homeassistant"],
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "Home Assistant (via the test harness), the hacs.json minimum and HA's Python version must move together",
+      "matchDepNames": ["ha-python", "hacs-homeassistant", "pytest-homeassistant-custom-component"],
+      "groupName": "Home Assistant and Python"
     },
     {
       "matchDepNames": ["flameconnect"],
