@@ -61,13 +61,13 @@
     },
     {
       "customType": "regex",
-      "description": "Track the Python floor in pyproject.toml requires-python (patch updates only; see packageRules)",
+      "description": "Track the Home Assistant Python version in pyproject.toml requires-python",
       "managerFilePatterns": ["/^pyproject\\.toml$/"],
       "matchStrings": [
-        "requires-python\\s*=\\s*\">=(?<currentValue>[\\d.]+)\""
+        "requires-python\\s*=\\s*\">=(?<currentValue>\\d+\\.\\d+)\""
       ],
-      "depNameTemplate": "python",
-      "datasourceTemplate": "python-version"
+      "depNameTemplate": "ha-python",
+      "datasourceTemplate": "custom.ha-python"
     },
     {
       "customType": "regex",
@@ -99,14 +99,10 @@
       "description": "Home Assistant version should match the homeassistant key in hacs.json"
     },
     {
-      "description": "HA Python: track major.minor only; plain datasource has no timestamps so skip release age; review before merging",
+      "description": "HA Python: track major.minor only; plain datasource has no timestamps so skip release age. CI gates automerge",
       "matchDatasources": ["custom.ha-python"],
       "extractVersion": "^(?<version>\\d+\\.\\d+)",
-      "minimumReleaseAge": null,
-      "automerge": false,
-      "prBodyNotes": [
-        "⚠️ **Do not automerge.** Home Assistant has moved to a new Python minor version. Also bump `requires-python` in `pyproject.toml` by hand; Renovate only proposes patch updates there."
-      ]
+      "minimumReleaseAge": null
     },
     {
       "description": "Python version is tracked via ha-python; ignore the built-in extraction from setup-python and the devcontainer image",
@@ -115,31 +111,14 @@
       "enabled": false
     },
     {
-      "description": "requires-python floor: allow patch bumps only; minor bumps follow Home Assistant via ha-python",
-      "matchDatasources": ["python-version"],
-      "matchDepNames": ["python"],
-      "matchUpdateTypes": ["major", "minor"],
-      "enabled": false
-    },
-    {
-      "description": "requires-python floor: review before merging",
-      "matchDatasources": ["python-version"],
-      "matchDepNames": ["python"],
-      "automerge": false
-    },
-    {
-      "description": "hacs.json minimum: plain JSON transform has no timestamps so skip release age; review before merging",
+      "description": "hacs.json minimum: JSON transform has no timestamps so skip release age. tests/test_hacs_manifest.py fails until the test harness pins the same release, which gates automerge",
       "matchDatasources": ["custom.hacs-homeassistant"],
-      "minimumReleaseAge": null,
-      "automerge": false
+      "minimumReleaseAge": null
     },
     {
       "description": "Home Assistant (via the test harness), the hacs.json minimum and HA's Python version must move together",
       "matchDepNames": ["ha-python", "hacs-homeassistant", "pytest-homeassistant-custom-component"],
-      "groupName": "Home Assistant and Python",
-      "prBodyNotes": [
-        "ℹ️ If this PR changes Python or `hacs.json`, wait until it also includes the `pytest-homeassistant-custom-component` update for the same Home Assistant release (it has a 3-day release age) before merging."
-      ]
+      "groupName": "Home Assistant and Python"
     },
     {
       "matchDepNames": ["flameconnect"],

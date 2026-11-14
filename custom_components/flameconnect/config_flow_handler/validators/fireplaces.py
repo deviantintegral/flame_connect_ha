@@ -43,7 +43,7 @@ async def validate_fireplaces(client: FlameConnectClient) -> None:
     for fire in fires:
         try:
             await client.get_fire_overview(fire.fire_id)
-        except (TypeError, KeyError):
+        except TypeError, KeyError:
             LOGGER.debug(
                 "Fire %s (%s) has no WiFi overview, skipping",
                 fire.friendly_name,

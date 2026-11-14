@@ -58,7 +58,7 @@ class FlameConnectConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             except AuthenticationError:
                 LOGGER.warning("Authentication failed during config flow")
                 errors["base"] = "invalid_auth"
-            except (ApiError, OSError):
+            except ApiError, OSError:
                 LOGGER.warning("Connection error during config flow")
                 errors["base"] = "cannot_connect"
             except Exception:  # noqa: BLE001
@@ -69,7 +69,7 @@ class FlameConnectConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     await self._validate_fireplaces(token_cache)
                 except NoWifiFireplacesError:
                     return self.async_abort(reason="no_wifi_fireplaces")
-                except (ApiError, OSError):
+                except ApiError, OSError:
                     LOGGER.warning("Connection error while checking fireplaces")
                     errors["base"] = "cannot_connect"
                 else:
@@ -146,7 +146,7 @@ class FlameConnectConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             except AuthenticationError:
                 LOGGER.warning("Authentication failed during reauth")
                 errors["base"] = "invalid_auth"
-            except (ApiError, OSError):
+            except ApiError, OSError:
                 LOGGER.warning("Connection error during reauth")
                 errors["base"] = "cannot_connect"
             except Exception:  # noqa: BLE001
