@@ -9,16 +9,35 @@
       "defaultRegistryUrlTemplate": "https://raw.githubusercontent.com/home-assistant/core/master/.python-version",
       "format": "plain"
     },
-    "hacs-homeassistant": {
-      "description": "Minimum Home Assistant version for hacs.json: the YEAR.MONTH.0 release of the Home Assistant version pinned by the latest pytest-homeassistant-custom-component",
-      "defaultRegistryUrlTemplate": "https://pypi.org/pypi/pytest-homeassistant-custom-component/json",
+    "phcc-stable": {
+      "description": "pytest-homeassistant-custom-component releases built on a stable Home Assistant release. Upstream publishes beta-based harness releases under ordinary version numbers, so PyPI can't tell them apart; each GitHub release body names its Home Assistant version",
+      "defaultRegistryUrlTemplate": "https://api.github.com/repos/MatthewFlamm/pytest-homeassistant-custom-component/releases?per_page=100",
       "format": "json",
       "transformTemplates": [
-        "( $ha := $substringAfter(info.requires_dist[$contains($, \"homeassistant==\")], \"homeassistant==\"); $parts := $split($ha, \".\"); {\"releases\": [{\"version\": $parts[0] & \".\" & $parts[1] & \".0\"}], \"sourceUrl\": \"https://github.com/MatthewFlamm/pytest-homeassistant-custom-component\"} )"
+        "{\"releases\": [$[$not(draft) and $not(prerelease) and $contains(body, /homeassistant version: \\d+\\.\\d+\\.\\d+(\\s|$)/)].{\"version\": tag_name, \"releaseTimestamp\": published_at, \"changelogUrl\": html_url}], \"sourceUrl\": \"https://github.com/MatthewFlamm/pytest-homeassistant-custom-component\"}"
+      ]
+    },
+    "hacs-homeassistant": {
+      "description": "Minimum Home Assistant version for hacs.json: one YEAR.MONTH.0 release per Home Assistant month that has a stable-based pytest-homeassistant-custom-component release, timestamped with that month's first such release so hacs.json can't move ahead of the test harness",
+      "defaultRegistryUrlTemplate": "https://api.github.com/repos/MatthewFlamm/pytest-homeassistant-custom-component/releases?per_page=100",
+      "format": "json",
+      "transformTemplates": [
+        "( $stable := [$[$not(draft) and $not(prerelease) and $contains(body, /homeassistant version: \\d+\\.\\d+\\.\\d+(\\s|$)/)].( $g := $match(body, /homeassistant version: (\\d+)\\.(\\d+)\\./).groups; {\"month\": $g[0] & \".\" & $g[1] & \".0\", \"ts\": published_at} )]; {\"releases\": [$map($distinct($stable.month), function($m) { {\"version\": $m, \"releaseTimestamp\": $sort($stable[month = $m].ts)[0]} })], \"sourceUrl\": \"https://github.com/MatthewFlamm/pytest-homeassistant-custom-component\"} )"
       ]
     }
   },
   "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update the test harness from stable-based releases only (see the phcc-stable datasource)",
+      "managerFilePatterns": ["/^requirements_test\\.txt$/"],
+      "matchStrings": [
+        "pytest-homeassistant-custom-component==(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "pytest-homeassistant-custom-component",
+      "datasourceTemplate": "custom.phcc-stable",
+      "versioningTemplate": "pep440"
+    },
     {
       "customType": "regex",
       "description": "Keep the hacs.json minimum Home Assistant version at the release the test harness runs against",
@@ -111,9 +130,10 @@
       "enabled": false
     },
     {
-      "description": "hacs.json minimum: JSON transform has no timestamps so skip release age. tests/test_hacs_manifest.py fails until the test harness pins the same release, which gates automerge",
-      "matchDatasources": ["custom.hacs-homeassistant"],
-      "minimumReleaseAge": null
+      "description": "The test harness is tracked via the phcc-stable custom manager; ignore the built-in PyPI extraction, which would offer beta-based releases",
+      "matchManagers": ["pip_requirements"],
+      "matchDepNames": ["pytest-homeassistant-custom-component"],
+      "enabled": false
     },
     {
       "description": "Home Assistant (via the test harness), the hacs.json minimum and HA's Python version must move together",
